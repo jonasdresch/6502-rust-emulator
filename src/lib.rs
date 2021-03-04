@@ -2,8 +2,7 @@
 //http://www.emulator101.com/6502-addressing-modes.html
 
 // lifetime anotation <'b>
-pub struct CPU<'a>
-{
+pub struct CPU<'a> {
     pub pc: u16,
     pub sp: u8,
     pub a: u8,
@@ -11,11 +10,10 @@ pub struct CPU<'a>
     pub y: u8,
     pub status: u8,
     pub cycles_run: u32,
-    mem: &'a mut MEM
+    mem: &'a mut MEM,
 }
 
 impl<'a> CPU<'a> {
-
     // Instructions
     // Load Operations
     pub const LDA_IMMEDIATE: u8 = 0xA9;
@@ -73,24 +71,36 @@ impl<'a> CPU<'a> {
     pub const FLAG_NEGATIVE: u8 = 0b0000_0001;
 
     pub fn new(mem: &'a mut MEM) -> Self {
-        CPU {pc:0, sp:0, a:0, x:0, y:0, status:0, cycles_run:0, mem: mem}
+        CPU {
+            pc: 0,
+            sp: 0,
+            a: 0,
+            x: 0,
+            y: 0,
+            status: 0,
+            cycles_run: 0,
+            mem: mem,
+        }
     }
 
     pub fn reset(&mut self) {
-        self.pc = (self.mem.read8(RESET_VECTOR_ADDR) as u16) << 8 | self.mem.read8(RESET_VECTOR_ADDR+1) as u16;
+        self.pc = (self.mem.read8(RESET_VECTOR_ADDR) as u16) << 8
+            | self.mem.read8(RESET_VECTOR_ADDR + 1) as u16;
         self.status = 0;
         self.cycles_run = 0;
     }
 
-    fn read8(&mut self, addr: u16) -> u8{
+    // The methods below cost some cycles to run.
+    // Try to use them when processing instructions instead of incrementing the cycles counter on each instruction
+    fn read8(&mut self, addr: u16) -> u8 {
         let val = self.mem.read8(addr as usize);
         self.cycles_run += 1;
         return val;
     }
 
-    fn read16(&mut self, addr: u16) -> u16{
+    fn read16(&mut self, addr: u16) -> u16 {
         let low = self.read8(addr);
-        let high = self.read8(addr+1);
+        let high = self.read8(addr + 1);
         let val = (high as u16) << 8 | low as u16;
         return val;
     }
@@ -100,13 +110,13 @@ impl<'a> CPU<'a> {
         self.cycles_run += 1;
     }
 
-    fn read_pc(&mut self) -> u8{
+    fn read_pc(&mut self) -> u8 {
         let val = self.read8(self.pc);
         self.pc += 1;
         return val;
     }
 
-    fn sum(&mut self, val1: u8, val2: u8) -> u8{
+    fn sum(&mut self, val1: u8, val2: u8) -> u8 {
         self.cycles_run += 1;
         let sum = val1 as u16 + val2 as u16;
         return sum as u8;
@@ -127,17 +137,15 @@ impl<'a> CPU<'a> {
         return sum as u8;
     } */
 
-    fn set_load_flags(&mut self, reg: u8) {
+    fn set_load_instructions_flags(&mut self, reg: u8) {
         if reg == 0 {
             self.status |= CPU::FLAG_ZERO;
-        }
-        else {
+        } else {
             self.status &= !CPU::FLAG_ZERO;
         }
         if (reg & 0b1000_0000) > 0 {
             self.status |= CPU::FLAG_NEGATIVE;
-        }
-        else {
+        } else {
             self.status &= !CPU::FLAG_NEGATIVE;
         }
     }
@@ -150,20 +158,20 @@ impl<'a> CPU<'a> {
                 CPU::LDA_IMMEDIATE => {
                     println!("LDA immediate");
                     self.a = self.read_pc();
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ZERO => {
                     println!("LDA Zero page");
                     let addr = self.read_pc();
                     self.a = self.read8(addr as u16);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ZERO_X => {
                     println!("LDA Zero page X");
                     let val = self.read_pc();
                     let addr = self.sum(val, self.x);
                     self.a = self.read8(addr as u16);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE => {
                     println!("LDA Absolute");
@@ -171,7 +179,7 @@ impl<'a> CPU<'a> {
                     let high = self.read_pc() as u16;
                     let addr = high << 8 | low;
                     self.a = self.read8(addr);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_X => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
@@ -185,7 +193,7 @@ impl<'a> CPU<'a> {
                     }
                     addr += (high as u16) << 8;
                     self.a = self.read8(addr);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_Y => {
                     println!("LDA Absolute Y");
@@ -198,7 +206,7 @@ impl<'a> CPU<'a> {
                     }
                     addr += (high as u16) << 8;
                     self.a = self.read8(addr);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_X => {
                     println!("LDA Indirect X");
@@ -206,13 +214,13 @@ impl<'a> CPU<'a> {
                     ind_addr = self.sum(ind_addr, self.x);
                     let addr = self.read16(ind_addr as u16);
                     self.a = self.read8(addr);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_Y => {
                     println!("LDA Indirect Y");
                     let ind_addr = self.read_pc();
                     let low = self.read8(ind_addr as u16);
-                    let high = self.read8((ind_addr+1) as u16);
+                    let high = self.read8((ind_addr + 1) as u16);
                     let mut addr = (self.y as u16) + (low as u16);
                     if addr > 255 {
                         // penalty
@@ -220,25 +228,25 @@ impl<'a> CPU<'a> {
                     }
                     addr += (high as u16) << 8;
                     self.a = self.read8(addr);
-                    self.set_load_flags(self.a);
+                    self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDX_IMMEDIATE => {
                     println!("LDX immediate");
                     self.x = self.read_pc();
-                    self.set_load_flags(self.x);
+                    self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ZERO => {
                     println!("LDX Zero page");
                     let addr = self.read_pc();
                     self.x = self.read8(addr as u16);
-                    self.set_load_flags(self.x);
+                    self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ZERO_Y => {
                     println!("LDX Zero page Y");
                     let val = self.read_pc();
                     let addr = self.sum(val, self.y);
                     self.x = self.read8(addr as u16);
-                    self.set_load_flags(self.x);
+                    self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE => {
                     println!("LDX Absolute");
@@ -246,7 +254,7 @@ impl<'a> CPU<'a> {
                     let high = self.read_pc() as u16;
                     let addr = high << 8 | low;
                     self.x = self.read8(addr);
-                    self.set_load_flags(self.x);
+                    self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE_Y => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
@@ -260,25 +268,25 @@ impl<'a> CPU<'a> {
                     }
                     addr += (high as u16) << 8;
                     self.x = self.read8(addr);
-                    self.set_load_flags(self.x);
+                    self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDY_IMMEDIATE => {
                     println!("LDY immediate");
                     self.y = self.read_pc();
-                    self.set_load_flags(self.y);
+                    self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ZERO => {
                     println!("LDY Zero page");
                     let addr = self.read_pc();
                     self.y = self.read8(addr as u16);
-                    self.set_load_flags(self.y);
+                    self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ZERO_X => {
                     println!("LDY Zero page X");
                     let val = self.read_pc();
                     let addr = self.sum(val, self.x);
                     self.y = self.read8(addr as u16);
-                    self.set_load_flags(self.y);
+                    self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE => {
                     println!("LDY Absolute");
@@ -286,7 +294,7 @@ impl<'a> CPU<'a> {
                     let high = self.read_pc() as u16;
                     let addr = high << 8 | low;
                     self.y = self.read8(addr);
-                    self.set_load_flags(self.y);
+                    self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE_X => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
@@ -300,7 +308,7 @@ impl<'a> CPU<'a> {
                     }
                     addr += (high as u16) << 8;
                     self.y = self.read8(addr);
-                    self.set_load_flags(self.y);
+                    self.set_load_instructions_flags(self.y);
                 }
                 CPU::STA_ZERO => {
                     println!("STA Zero page");
@@ -356,14 +364,13 @@ impl<'a> CPU<'a> {
 pub const MEM_SIZE: usize = 64 * 1024;
 pub const RESET_VECTOR_ADDR: usize = 0xFFFC;
 pub const RESET_EXEC_ADDRESS: u16 = 0xFCE2;
-pub struct MEM
-{
-    mem: [u8; MEM_SIZE]
+pub struct MEM {
+    mem: [u8; MEM_SIZE],
 }
 
 impl MEM {
     pub fn new() -> MEM {
-        MEM {mem : [0; MEM_SIZE]}
+        MEM { mem: [0; MEM_SIZE] }
     }
 
     pub fn read8(&self, address: usize) -> u8 {
@@ -379,13 +386,13 @@ impl MEM {
     pub fn write16(&mut self, address: usize, value: u16) {
         assert!(address < MEM_SIZE, "memory access out ouf bounds");
         self.write8(address, value as u8);
-        self.write8(address+1, ((value & 0xFF00) >> 8) as u8);
+        self.write8(address + 1, ((value & 0xFF00) >> 8) as u8);
     }
 
     pub fn reset(&mut self) {
         self.mem = [0; MEM_SIZE];
         // Execution address of cold reset. based on C64 https://sta.c64.org/cbm64mem.html
         self.mem[RESET_VECTOR_ADDR] = ((RESET_EXEC_ADDRESS >> 8) & 0xFF) as u8;
-        self.mem[RESET_VECTOR_ADDR+1] = (RESET_EXEC_ADDRESS & 0x00FF) as u8;
+        self.mem[RESET_VECTOR_ADDR + 1] = (RESET_EXEC_ADDRESS & 0x00FF) as u8;
     }
 }
