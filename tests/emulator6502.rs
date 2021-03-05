@@ -537,6 +537,91 @@ fn test_cpu_sta_zero_page_x() {
 }
 
 #[test]
+fn test_cpu_sta_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
+    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.a = 0xFE;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.a = 0x12;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1225), 0xFE);
+    assert_eq!(mem.read8(0x12AA), 0x12);
+}
+
+#[test]
+fn test_cpu_sta_absolute_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load program in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE_X);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE_X);
+    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
+    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xF;
+    cpu.a = 0xAB;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(5, cpu.cycles_run);
+    cpu.x = 0xBB;
+    cpu.a = 0x11;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(10, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1234), 0xAB);
+    assert_eq!(mem.read8(0x1365), 0x11);
+}
+
+#[test]
+fn test_cpu_sta_absolute_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load program in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
+    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0xF;
+    cpu.a = 0xAB;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(5, cpu.cycles_run);
+    cpu.y = 0xBB;
+    cpu.a = 0x11;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(10, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1234), 0xAB);
+    assert_eq!(mem.read8(0x1365), 0x11);
+}
+
+#[test]
 fn test_mem_read_limits_ok() {
     let mut mem = MEM::new();
     mem.reset();

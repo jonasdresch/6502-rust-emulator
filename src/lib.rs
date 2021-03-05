@@ -333,10 +333,8 @@ impl<'a> CPU<'a> {
                     let low = self.read_pc();
                     let high = self.read_pc();
                     let mut addr = (self.x as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.read8(addr);
-                    }
+                    // penalty
+                    self.read8(addr);
                     addr += (high as u16) << 8;
                     self.write8(addr, self.a);
                 }
@@ -345,10 +343,8 @@ impl<'a> CPU<'a> {
                     let low = self.read_pc();
                     let high = self.read_pc();
                     let mut addr = (self.y as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.read8(addr);
-                    }
+                    // penalty
+                    self.read8(addr);
                     addr += (high as u16) << 8;
                     self.write8(addr, self.a);
                 }
