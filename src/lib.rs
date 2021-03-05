@@ -79,7 +79,7 @@ impl<'a> CPU<'a> {
             y: 0,
             status: 0,
             cycles_run: 0,
-            mem: mem,
+            mem,
         }
     }
 
@@ -95,14 +95,13 @@ impl<'a> CPU<'a> {
     fn read8(&mut self, addr: u16) -> u8 {
         let val = self.mem.read8(addr as usize);
         self.cycles_run += 1;
-        return val;
+        val
     }
 
     fn read16(&mut self, addr: u16) -> u16 {
         let low = self.read8(addr);
         let high = self.read8(addr + 1);
-        let val = (high as u16) << 8 | low as u16;
-        return val;
+        (high as u16) << 8 | low as u16
     }
 
     fn write8(&mut self, addr: u16, val: u8) {
@@ -113,13 +112,13 @@ impl<'a> CPU<'a> {
     fn read_pc(&mut self) -> u8 {
         let val = self.read8(self.pc);
         self.pc += 1;
-        return val;
+        val
     }
 
     fn sum(&mut self, val1: u8, val2: u8) -> u8 {
         self.cycles_run += 1;
         let sum = val1 as u16 + val2 as u16;
-        return sum as u8;
+        sum as u8
     }
 
     /* fn sum(&mut self, val1: u8, val2: u8, simult: bool) -> u8{
@@ -362,6 +361,12 @@ pub const RESET_VECTOR_ADDR: usize = 0xFFFC;
 pub const RESET_EXEC_ADDRESS: u16 = 0xFCE2;
 pub struct MEM {
     mem: [u8; MEM_SIZE],
+}
+
+impl Default for MEM {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MEM {
