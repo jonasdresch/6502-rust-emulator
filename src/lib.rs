@@ -1,5 +1,7 @@
-//http://www.obelisk.me.uk/6502/architecture.html
-//http://www.emulator101.com/6502-addressing-modes.html
+// http://www.obelisk.me.uk/6502/architecture.html
+// http://www.emulator101.com/6502-addressing-modes.html
+// http://nesdev.com/6502_cpu.txt
+// https://slark.me/c64-downloads/6502-addressing-modes.pdf
 
 // lifetime anotation <'b>
 pub struct CPU<'a> {
@@ -216,6 +218,7 @@ impl<'a> CPU<'a> {
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_Y => {
+                    // TODO: make the penalty cycle more close to the docs
                     println!("LDA Indirect Y");
                     let ind_addr = self.read_pc();
                     let low = self.read8(ind_addr as u16);
@@ -343,6 +346,23 @@ impl<'a> CPU<'a> {
                     let high = self.read_pc();
                     let mut addr = (self.y as u16) + (low as u16);
                     // penalty
+                    self.read8(addr);
+                    addr += (high as u16) << 8;
+                    self.write8(addr, self.a);
+                }
+                CPU::STA_INDIRECT_X => {
+                    println!("STA Indirect X");
+                    let mut ind_addr = self.read_pc();
+                    ind_addr = self.sum(ind_addr, self.x);
+                    let addr = self.read16(ind_addr as u16);
+                    self.write8(addr, self.a);
+                }
+                CPU::STA_INDIRECT_Y => {
+                    println!("STA Indirect Y");
+                    let ptr_addr = self.read_pc();
+                    let low = self.read8(ptr_addr as u16);
+                    let high = self.read8((ptr_addr + 1) as u16);
+                    let mut addr = (self.y as u16) + (low as u16);
                     self.read8(addr);
                     addr += (high as u16) << 8;
                     self.write8(addr, self.a);
