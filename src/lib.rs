@@ -367,6 +367,42 @@ impl<'a> CPU<'a> {
                     addr += (high as u16) << 8;
                     self.write8(addr, self.a);
                 }
+                CPU::STX_ZERO => {
+                    println!("STX Zero page");
+                    let addr = self.read_pc();
+                    self.write8(addr as u16, self.x);
+                }
+                CPU::STX_ZERO_Y => {
+                    println!("STX Zero page Y");
+                    let mut addr = self.read_pc();
+                    addr = self.sum(addr, self.y);
+                    self.write8(addr as u16, self.x);
+                }
+                CPU::STX_ABSOLUTE => {
+                    println!("STX Absolute");
+                    let low = self.read_pc() as u16;
+                    let high = self.read_pc() as u16;
+                    let addr = high << 8 | low;
+                    self.write8(addr, self.x);
+                }
+                CPU::STY_ZERO => {
+                    println!("STY Zero page");
+                    let addr = self.read_pc();
+                    self.write8(addr as u16, self.y);
+                }
+                CPU::STY_ZERO_X => {
+                    println!("STY Zero page X");
+                    let mut addr = self.read_pc();
+                    addr = self.sum(addr, self.x);
+                    self.write8(addr as u16, self.y);
+                }
+                CPU::STY_ABSOLUTE => {
+                    println!("STY Absolute");
+                    let low = self.read_pc() as u16;
+                    let high = self.read_pc() as u16;
+                    let addr = high << 8 | low;
+                    self.write8(addr, self.y);
+                }
                 _ => println!("Invalid OP"),
             }
             if self.cycles_run - init_cycles >= cycles {

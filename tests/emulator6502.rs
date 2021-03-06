@@ -687,6 +687,164 @@ fn test_cpu_sta_indirect_y() {
 }
 
 #[test]
+fn test_cpu_stx_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ZERO);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STX_ZERO);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xFE;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.x = 0x12;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(6, cpu.cycles_run);
+    assert_eq!(mem.read8(0xCA), 0xFE);
+    assert_eq!(mem.read8(0xCB), 0x12);
+}
+
+#[test]
+fn test_cpu_stx_zero_page_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ZERO_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STX_ZERO_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0x0F;
+    cpu.x = 0xFE;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.y = 0xFF;
+    cpu.x = 0xA;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(mem.read8(0x8F), 0xFE);
+    assert_eq!(mem.read8(0x7F), 0xA);
+}
+
+#[test]
+fn test_cpu_stx_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STX_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
+    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xFE;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.x = 0x12;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1225), 0xFE);
+    assert_eq!(mem.read8(0x12AA), 0x12);
+}
+
+#[test]
+fn test_cpu_sty_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ZERO);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STY_ZERO);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0xFE;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.y = 0x12;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(6, cpu.cycles_run);
+    assert_eq!(mem.read8(0xCA), 0xFE);
+    assert_eq!(mem.read8(0xCB), 0x12);
+}
+
+#[test]
+fn test_cpu_sty_zero_page_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ZERO_X);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STY_ZERO_X);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0x0F;
+    cpu.y = 0xFE;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.x = 0xFF;
+    cpu.y = 0xA;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(mem.read8(0x8F), 0xFE);
+    assert_eq!(mem.read8(0x7F), 0xA);
+}
+
+#[test]
+fn test_cpu_sty_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load programm in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STY_ABSOLUTE);
+    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
+    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0xFE;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.y = 0x12;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1225), 0xFE);
+    assert_eq!(mem.read8(0x12AA), 0x12);
+}
+
+#[test]
 fn test_mem_read_limits_ok() {
     let mut mem = MEM::new();
     mem.reset();
