@@ -622,6 +622,71 @@ fn test_cpu_sta_absolute_y() {
 }
 
 #[test]
+fn test_cpu_sta_indirect_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load program in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_INDIRECT_X);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_INDIRECT_X);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.write16(0x34, 0x1234);
+    mem.write16(0x65, 0x1365);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xF;
+    cpu.a = 0xAB;
+    // Flags should not affect the instruction
+    cpu.status = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
+    assert_eq!(6, cpu.cycles_run);
+    // this will cause a wrap around as the addres will be higher than 255
+    cpu.x = 0xBB;
+    cpu.a = 0x11;
+    cpu.status = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(12, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1234), 0xAB);
+    assert_eq!(mem.read8(0x1365), 0x11);
+}
+
+#[test]
+fn test_cpu_sta_indirect_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    // Load program in memory
+    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_INDIRECT_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
+    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_INDIRECT_Y);
+    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.write16(0x25, 0x1225);
+    mem.write16(0xAA, 0x12AA);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0xF;
+    cpu.a = 0xAB;
+    // Flags should not affect the instruction
+    cpu.status = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
+    assert_eq!(6, cpu.cycles_run);
+    cpu.y = 0xBB;
+    cpu.a = 0x11;
+    cpu.status = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(12, cpu.cycles_run);
+    assert_eq!(mem.read8(0x1234), 0xAB);
+    assert_eq!(mem.read8(0x1365), 0x11);
+}
+
+#[test]
 fn test_mem_read_limits_ok() {
     let mut mem = MEM::new();
     mem.reset();
