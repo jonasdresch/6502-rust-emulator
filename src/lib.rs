@@ -151,6 +151,49 @@ impl<'a> CPU<'a> {
         }
     }
 
+    // Methods for the addressing modes
+    fn fetch_zero_page_addr(&mut self, reg: u8) -> u16 {
+        let val = self.read_pc();
+        self.sum(val, reg) as u16
+    }
+
+    fn fetch_absolute_addr(&mut self) -> u16 {
+        let low = self.read_pc() as u16;
+        let high = self.read_pc() as u16;
+        high << 8 | low
+    }
+
+    fn fetch_absolute_indexed_addr(&mut self, reg: u8, read_from_addr: bool) -> u16 {
+        let low = self.read_pc();
+        let high = self.read_pc();
+        let mut addr = (reg as u16) + (low as u16);
+        if addr > 255 || !read_from_addr {
+            // penalty
+            self.read8(addr);
+        }
+        addr += (high as u16) << 8;
+        addr
+    }
+
+    fn fetch_indirect_x_addr(&mut self) -> u16 {
+        let mut ind_addr = self.read_pc();
+        ind_addr = self.sum(ind_addr, self.x);
+        self.read16(ind_addr as u16)
+    }
+
+    fn fetch_indirect_y_addr(&mut self, read_from_addr: bool) -> u16 {
+        let ind_addr = self.read_pc();
+        let low = self.read8(ind_addr as u16);
+        let high = self.read8((ind_addr + 1) as u16);
+        let mut addr = (self.y as u16) + (low as u16);
+        if addr > 255 || !read_from_addr {
+            // penalty
+            self.read8(addr);
+        }
+        addr += (high as u16) << 8;
+        addr
+    }
+
     pub fn process(&mut self, cycles: u32) {
         let init_cycles = self.cycles_run;
         loop {
@@ -169,66 +212,38 @@ impl<'a> CPU<'a> {
                 }
                 CPU::LDA_ZERO_X => {
                     println!("LDA Zero page X");
-                    let val = self.read_pc();
-                    let addr = self.sum(val, self.x);
-                    self.a = self.read8(addr as u16);
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE => {
                     println!("LDA Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_X => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
                     println!("LDA Absolute X");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.x as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.a = self.read8(addr);
-                    }
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.x, true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_Y => {
                     println!("LDA Absolute Y");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.y as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.a = self.read8(addr);
-                    }
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.y, true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_X => {
                     println!("LDA Indirect X");
-                    let mut ind_addr = self.read_pc();
-                    ind_addr = self.sum(ind_addr, self.x);
-                    let addr = self.read16(ind_addr as u16);
+                    let addr = self.fetch_indirect_x_addr();
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_Y => {
-                    // TODO: make the penalty cycle more close to the docs
                     println!("LDA Indirect Y");
-                    let ind_addr = self.read_pc();
-                    let low = self.read8(ind_addr as u16);
-                    let high = self.read8((ind_addr + 1) as u16);
-                    let mut addr = (self.y as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.a = self.read8(addr);
-                    }
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_indirect_y_addr(true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
@@ -245,30 +260,20 @@ impl<'a> CPU<'a> {
                 }
                 CPU::LDX_ZERO_Y => {
                     println!("LDX Zero page Y");
-                    let val = self.read_pc();
-                    let addr = self.sum(val, self.y);
-                    self.x = self.read8(addr as u16);
+                    let addr = self.fetch_zero_page_addr(self.y);
+                    self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE => {
                     println!("LDX Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE_Y => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
                     println!("LDX Absolute Y");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.y as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.x = self.read8(addr);
-                    }
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.y, true);
                     self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
@@ -285,30 +290,20 @@ impl<'a> CPU<'a> {
                 }
                 CPU::LDY_ZERO_X => {
                     println!("LDY Zero page X");
-                    let val = self.read_pc();
-                    let addr = self.sum(val, self.x);
-                    self.y = self.read8(addr as u16);
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE => {
                     println!("LDY Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE_X => {
                     // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
                     println!("LDY Absolute X");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.x as u16) + (low as u16);
-                    if addr > 255 {
-                        // penalty
-                        self.y = self.read8(addr);
-                    }
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.x, true);
                     self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
@@ -319,52 +314,32 @@ impl<'a> CPU<'a> {
                 }
                 CPU::STA_ZERO_X => {
                     println!("STA Zero page X");
-                    let mut addr = self.read_pc();
-                    addr = self.sum(addr, self.x);
-                    self.write8(addr as u16, self.a);
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE => {
                     println!("STA Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE_X => {
                     println!("STA Absolute X");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.x as u16) + (low as u16);
-                    // penalty
-                    self.read8(addr);
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.x, false);
                     self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE_Y => {
                     println!("STA Absolute Y");
-                    let low = self.read_pc();
-                    let high = self.read_pc();
-                    let mut addr = (self.y as u16) + (low as u16);
-                    // penalty
-                    self.read8(addr);
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_absolute_indexed_addr(self.y, false);
                     self.write8(addr, self.a);
                 }
                 CPU::STA_INDIRECT_X => {
                     println!("STA Indirect X");
-                    let mut ind_addr = self.read_pc();
-                    ind_addr = self.sum(ind_addr, self.x);
-                    let addr = self.read16(ind_addr as u16);
+                    let addr = self.fetch_indirect_x_addr();
                     self.write8(addr, self.a);
                 }
                 CPU::STA_INDIRECT_Y => {
                     println!("STA Indirect Y");
-                    let ptr_addr = self.read_pc();
-                    let low = self.read8(ptr_addr as u16);
-                    let high = self.read8((ptr_addr + 1) as u16);
-                    let mut addr = (self.y as u16) + (low as u16);
-                    self.read8(addr);
-                    addr += (high as u16) << 8;
+                    let addr = self.fetch_indirect_y_addr(false);
                     self.write8(addr, self.a);
                 }
                 CPU::STX_ZERO => {
@@ -374,15 +349,12 @@ impl<'a> CPU<'a> {
                 }
                 CPU::STX_ZERO_Y => {
                     println!("STX Zero page Y");
-                    let mut addr = self.read_pc();
-                    addr = self.sum(addr, self.y);
-                    self.write8(addr as u16, self.x);
+                    let addr = self.fetch_zero_page_addr(self.y);
+                    self.write8(addr, self.x);
                 }
                 CPU::STX_ABSOLUTE => {
                     println!("STX Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.x);
                 }
                 CPU::STY_ZERO => {
@@ -392,15 +364,12 @@ impl<'a> CPU<'a> {
                 }
                 CPU::STY_ZERO_X => {
                     println!("STY Zero page X");
-                    let mut addr = self.read_pc();
-                    addr = self.sum(addr, self.x);
-                    self.write8(addr as u16, self.y);
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.write8(addr, self.y);
                 }
                 CPU::STY_ABSOLUTE => {
                     println!("STY Absolute");
-                    let low = self.read_pc() as u16;
-                    let high = self.read_pc() as u16;
-                    let addr = high << 8 | low;
+                    let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.y);
                 }
                 _ => println!("Invalid OP"),
