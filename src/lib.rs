@@ -2,6 +2,7 @@
 // http://www.emulator101.com/6502-addressing-modes.html
 // http://nesdev.com/6502_cpu.txt
 // https://slark.me/c64-downloads/6502-addressing-modes.pdf
+// https://sites.google.com/site/6502asembly/6502-instruction-set/plp
 
 // lifetime anotation <'b>
 pub struct CPU<'a> {
@@ -62,6 +63,31 @@ impl<'a> CPU<'a> {
     pub const PUSH_STAT_TO_SP: u8 = 0x08;
     pub const PULL_SP_TO_A: u8 = 0x68;
     pub const PULL_SP_TO_STAT: u8 = 0x28;
+    // Logic Operations
+    pub const AND_IMMEDIATE: u8 = 0x29;
+    pub const AND_ZERO: u8 = 0x25;
+    pub const AND_ZERO_X: u8 = 0x35;
+    pub const AND_ABSOLUTE: u8 = 0x2D;
+    pub const AND_ABSOLUTE_X: u8 = 0x3D;
+    pub const AND_ABSOLUTE_Y: u8 = 0x39;
+    pub const AND_INDIRECT_X: u8 = 0x21;
+    pub const AND_INDIRECT_Y: u8 = 0x31;
+    pub const EOR_IMMEDIATE: u8 = 0x49;
+    pub const EOR_ZERO: u8 = 0x45;
+    pub const EOR_ZERO_X: u8 = 0x55;
+    pub const EOR_ABSOLUTE: u8 = 0x4D;
+    pub const EOR_ABSOLUTE_X: u8 = 0x5D;
+    pub const EOR_ABSOLUTE_Y: u8 = 0x59;
+    pub const EOR_INDIRECT_X: u8 = 0x41;
+    pub const EOR_INDIRECT_Y: u8 = 0x51;
+    pub const ORA_IMMEDIATE: u8 = 0x09;
+    pub const ORA_ZERO: u8 = 0x05;
+    pub const ORA_ZERO_X: u8 = 0x15;
+    pub const ORA_ABSOLUTE: u8 = 0x0D;
+    pub const ORA_ABSOLUTE_X: u8 = 0x1D;
+    pub const ORA_ABSOLUTE_Y: u8 = 0x19;
+    pub const ORA_INDIRECT_X: u8 = 0x01;
+    pub const ORA_INDIRECT_Y: u8 = 0x11;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0100_0000;
@@ -73,16 +99,7 @@ impl<'a> CPU<'a> {
     pub const FLAG_NEGATIVE: u8 = 0b0000_0001;
 
     pub fn new(mem: &'a mut MEM) -> Self {
-        CPU {
-            pc: 0,
-            sp: 0,
-            a: 0,
-            x: 0,
-            y: 0,
-            status: 0,
-            cycles_run: 0,
-            mem,
-        }
+        CPU { pc: 0, sp: 0, a: 0, x: 0, y: 0, status: 0, cycles_run: 0, mem }
     }
 
     pub fn reset(&mut self) {
@@ -90,6 +107,7 @@ impl<'a> CPU<'a> {
             | self.mem.read8(RESET_VECTOR_ADDR + 1) as u16;
         self.status = 0;
         self.cycles_run = 0;
+        self.sp = STACK_OFFSET_START;
     }
 
     // The methods below cost some cycles to run.
@@ -111,6 +129,17 @@ impl<'a> CPU<'a> {
         self.cycles_run += 1;
     }
 
+    fn write_to_stack(&mut self, val: u8) {
+        self.write8(self.sp as u16 + STACK_START_ADDR, val);
+        self.sp = self.sub(self.sp, 1);
+    }
+
+    fn read_from_stack(&mut self) -> u8 {
+        self.sp = self.sum(self.sp, 1);
+        self.cycles_run += 1;
+        self.read8(self.sp as u16 + STACK_START_ADDR)
+    }
+
     fn read_pc(&mut self) -> u8 {
         let val = self.read8(self.pc);
         self.pc += 1;
@@ -121,6 +150,11 @@ impl<'a> CPU<'a> {
         self.cycles_run += 1;
         let sum = val1 as u16 + val2 as u16;
         sum as u8
+    }
+
+    fn sub(&mut self, val1: u8, val2: u8) -> u8 {
+        self.cycles_run += 1;
+        val1 - val2
     }
 
     /* fn sum(&mut self, val1: u8, val2: u8, simult: bool) -> u8{
@@ -163,6 +197,7 @@ impl<'a> CPU<'a> {
         high << 8 | low
     }
 
+    // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
     fn fetch_absolute_indexed_addr(&mut self, reg: u8, read_from_addr: bool) -> u16 {
         let low = self.read_pc();
         let high = self.read_pc();
@@ -200,177 +235,304 @@ impl<'a> CPU<'a> {
             let instruction = self.read_pc();
             match instruction {
                 CPU::LDA_IMMEDIATE => {
-                    println!("LDA immediate");
                     self.a = self.read_pc();
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ZERO => {
-                    println!("LDA Zero page");
                     let addr = self.read_pc();
                     self.a = self.read8(addr as u16);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ZERO_X => {
-                    println!("LDA Zero page X");
                     let addr = self.fetch_zero_page_addr(self.x);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE => {
-                    println!("LDA Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_X => {
-                    // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
-                    println!("LDA Absolute X");
                     let addr = self.fetch_absolute_indexed_addr(self.x, true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_ABSOLUTE_Y => {
-                    println!("LDA Absolute Y");
                     let addr = self.fetch_absolute_indexed_addr(self.y, true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_X => {
-                    println!("LDA Indirect X");
                     let addr = self.fetch_indirect_x_addr();
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDA_INDIRECT_Y => {
-                    println!("LDA Indirect Y");
                     let addr = self.fetch_indirect_y_addr(true);
                     self.a = self.read8(addr);
                     self.set_load_instructions_flags(self.a);
                 }
                 CPU::LDX_IMMEDIATE => {
-                    println!("LDX immediate");
                     self.x = self.read_pc();
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ZERO => {
-                    println!("LDX Zero page");
                     let addr = self.read_pc();
                     self.x = self.read8(addr as u16);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ZERO_Y => {
-                    println!("LDX Zero page Y");
                     let addr = self.fetch_zero_page_addr(self.y);
                     self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE => {
-                    println!("LDX Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDX_ABSOLUTE_Y => {
-                    // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
-                    println!("LDX Absolute Y");
                     let addr = self.fetch_absolute_indexed_addr(self.y, true);
                     self.x = self.read8(addr);
                     self.set_load_instructions_flags(self.x);
                 }
                 CPU::LDY_IMMEDIATE => {
-                    println!("LDY immediate");
                     self.y = self.read_pc();
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ZERO => {
-                    println!("LDY Zero page");
                     let addr = self.read_pc();
                     self.y = self.read8(addr as u16);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ZERO_X => {
-                    println!("LDY Zero page X");
                     let addr = self.fetch_zero_page_addr(self.x);
                     self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE => {
-                    println!("LDY Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::LDY_ABSOLUTE_X => {
-                    // https://retrocomputing.stackexchange.com/questions/15621/why-dont-all-absolute-x-instructions-take-an-extra-cycle-to-cross-page-boundari
-                    println!("LDY Absolute X");
                     let addr = self.fetch_absolute_indexed_addr(self.x, true);
                     self.y = self.read8(addr);
                     self.set_load_instructions_flags(self.y);
                 }
                 CPU::STA_ZERO => {
-                    println!("STA Zero page");
                     let addr = self.read_pc();
                     self.write8(addr as u16, self.a);
                 }
                 CPU::STA_ZERO_X => {
-                    println!("STA Zero page X");
                     let addr = self.fetch_zero_page_addr(self.x);
                     self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE => {
-                    println!("STA Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE_X => {
-                    println!("STA Absolute X");
                     let addr = self.fetch_absolute_indexed_addr(self.x, false);
                     self.write8(addr, self.a);
                 }
                 CPU::STA_ABSOLUTE_Y => {
-                    println!("STA Absolute Y");
                     let addr = self.fetch_absolute_indexed_addr(self.y, false);
                     self.write8(addr, self.a);
                 }
                 CPU::STA_INDIRECT_X => {
-                    println!("STA Indirect X");
                     let addr = self.fetch_indirect_x_addr();
                     self.write8(addr, self.a);
                 }
                 CPU::STA_INDIRECT_Y => {
-                    println!("STA Indirect Y");
                     let addr = self.fetch_indirect_y_addr(false);
                     self.write8(addr, self.a);
                 }
                 CPU::STX_ZERO => {
-                    println!("STX Zero page");
                     let addr = self.read_pc();
                     self.write8(addr as u16, self.x);
                 }
                 CPU::STX_ZERO_Y => {
-                    println!("STX Zero page Y");
                     let addr = self.fetch_zero_page_addr(self.y);
                     self.write8(addr, self.x);
                 }
                 CPU::STX_ABSOLUTE => {
-                    println!("STX Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.x);
                 }
                 CPU::STY_ZERO => {
-                    println!("STY Zero page");
                     let addr = self.read_pc();
                     self.write8(addr as u16, self.y);
                 }
                 CPU::STY_ZERO_X => {
-                    println!("STY Zero page X");
                     let addr = self.fetch_zero_page_addr(self.x);
                     self.write8(addr, self.y);
                 }
                 CPU::STY_ABSOLUTE => {
-                    println!("STY Absolute");
                     let addr = self.fetch_absolute_addr();
                     self.write8(addr, self.y);
+                }
+                CPU::TRANS_A_TO_X => {
+                    self.x = self.a;
+                    self.cycles_run += 1;
+                    self.set_load_instructions_flags(self.x);
+                }
+                CPU::TRANS_A_TO_Y => {
+                    self.y = self.a;
+                    self.cycles_run += 1;
+                    self.set_load_instructions_flags(self.y);
+                }
+                CPU::TRANS_X_TO_A => {
+                    self.a = self.x;
+                    self.cycles_run += 1;
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::TRANS_Y_TO_A => {
+                    self.a = self.y;
+                    self.cycles_run += 1;
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::TRANS_SP_TO_X => {
+                    self.x = self.sp;
+                    self.cycles_run += 1;
+                    self.set_load_instructions_flags(self.x);
+                }
+                CPU::TRANS_X_TO_SP => {
+                    self.sp = self.x;
+                    self.cycles_run += 1;
+                }
+                CPU::PUSH_A_TO_SP => {
+                    self.write_to_stack(self.a);
+                }
+                CPU::PUSH_STAT_TO_SP => {
+                    self.write_to_stack(self.status);
+                }
+                CPU::PULL_SP_TO_A => {
+                    self.a = self.read_from_stack();
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::PULL_SP_TO_STAT => {
+                    self.status = self.read_from_stack();
+                }
+                CPU::AND_IMMEDIATE => {
+                    self.a &= self.read_pc();
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_ZERO => {
+                    let addr = self.read_pc();
+                    self.a &= self.read8(addr as u16);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.x, true);
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.y, true);
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::AND_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    self.a &= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+
+                CPU::EOR_IMMEDIATE => {
+                    self.a ^= self.read_pc();
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_ZERO => {
+                    let addr = self.read_pc();
+                    self.a ^= self.read8(addr as u16);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.x, true);
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.y, true);
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::EOR_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    self.a ^= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+
+                CPU::ORA_IMMEDIATE => {
+                    self.a |= self.read_pc();
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_ZERO => {
+                    let addr = self.read_pc();
+                    self.a |= self.read8(addr as u16);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.x);
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.x, true);
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.y, true);
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
+                }
+                CPU::ORA_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    self.a |= self.read8(addr);
+                    self.set_load_instructions_flags(self.a);
                 }
                 _ => println!("Invalid OP"),
             }
@@ -384,6 +546,12 @@ impl<'a> CPU<'a> {
 pub const MEM_SIZE: usize = 64 * 1024;
 pub const RESET_VECTOR_ADDR: usize = 0xFFFC;
 pub const RESET_EXEC_ADDRESS: u16 = 0xFCE2;
+// Stack goes from 0x100 to 0x1FF. Empty stack points to 0x1FF and it grows downwards
+pub const STACK_START_ADDR: u16 = 0x100;
+pub const STACK_OFFSET_START: u8 = 0xFF;
+// for reading directly fro mthe memmory on tests
+pub const STACK_REAL_START: usize = STACK_START_ADDR as usize + STACK_OFFSET_START as usize;
+
 pub struct MEM {
     mem: [u8; MEM_SIZE],
 }
@@ -413,6 +581,12 @@ impl MEM {
         assert!(address < MEM_SIZE, "memory access out ouf bounds");
         self.write8(address, value as u8);
         self.write8(address + 1, ((value & 0xFF00) >> 8) as u8);
+    }
+
+    pub fn load_programm(&mut self, programm: &[u8]) {
+        for (i, elem) in programm.iter().enumerate() {
+            self.write8(RESET_EXEC_ADDRESS as usize + i, *elem);
+        }
     }
 
     pub fn reset(&mut self) {

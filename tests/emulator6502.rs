@@ -13,11 +13,7 @@ fn test_cpu_reset_vector() {
 fn test_cpu_lda_immediate() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDA_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x0);
+    mem.load_programm(&[CPU::LDA_IMMEDIATE, 0xCA, CPU::LDA_IMMEDIATE, 0x0]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.process(2);
@@ -36,11 +32,7 @@ fn test_cpu_lda_immediate() {
 fn test_cpu_lda_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDA_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::LDA_ZERO, 0xCA, CPU::LDA_ZERO, 0x0]);
     mem.write8(0xCA, 0xFE);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -60,11 +52,7 @@ fn test_cpu_lda_zero_page() {
 fn test_cpu_lda_zero_page_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDA_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::LDA_ZERO_X, 0x80, CPU::LDA_ZERO_X, 0x80]);
     mem.write8(0x8F, 0xFE);
     mem.write8(0x7F, 0xA);
     let mut cpu = CPU::new(&mut mem);
@@ -87,10 +75,7 @@ fn test_cpu_lda_zero_page_x() {
 fn test_cpu_lda_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x34);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.load_programm(&[CPU::LDA_ABSOLUTE, 0x34, 0x12]);
     mem.write8(0x1234, 0xAB);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -105,13 +90,7 @@ fn test_cpu_lda_absolute() {
 fn test_cpu_lda_absolute_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::LDA_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::LDA_ABSOLUTE_X, 0x25, 0x12, CPU::LDA_ABSOLUTE_X, 0xAA, 0x12]);
     mem.write8(0x1234, 0xAB);
     mem.write8(0x1365, 0x11);
     let mut cpu = CPU::new(&mut mem);
@@ -122,10 +101,7 @@ fn test_cpu_lda_absolute_x() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
     assert_eq!(0xAB, cpu.a);
-    assert_eq!(
-        CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW,
-        cpu.status
-    );
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
     assert_eq!(4, cpu.cycles_run);
     cpu.x = 0xBB;
     cpu.status = 0;
@@ -140,13 +116,7 @@ fn test_cpu_lda_absolute_x() {
 fn test_cpu_lda_absolute_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::LDA_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::LDA_ABSOLUTE_Y, 0x25, 0x12, CPU::LDA_ABSOLUTE_Y, 0xAA, 0x12]);
     mem.write8(0x1234, 0xAB);
     mem.write8(0x1365, 0x11);
     let mut cpu = CPU::new(&mut mem);
@@ -157,10 +127,7 @@ fn test_cpu_lda_absolute_y() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
     assert_eq!(0xAB, cpu.a);
-    assert_eq!(
-        CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW,
-        cpu.status
-    );
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
     assert_eq!(4, cpu.cycles_run);
     cpu.y = 0xBB;
     cpu.status = 0;
@@ -175,11 +142,7 @@ fn test_cpu_lda_absolute_y() {
 fn test_cpu_lda_indirect_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_INDIRECT_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDA_INDIRECT_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.load_programm(&[CPU::LDA_INDIRECT_X, 0x25, CPU::LDA_INDIRECT_X, 0xAA]);
     mem.write16(0x34, 0x1234);
     mem.write16(0x65, 0x1365);
     mem.write8(0x1234, 0xAB);
@@ -192,10 +155,7 @@ fn test_cpu_lda_indirect_x() {
     cpu.process(6);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xAB, cpu.a);
-    assert_eq!(
-        CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW,
-        cpu.status
-    );
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
     assert_eq!(6, cpu.cycles_run);
     // this will cause a wrap around as the addres will be higher than 255
     cpu.x = 0xBB;
@@ -211,11 +171,7 @@ fn test_cpu_lda_indirect_x() {
 fn test_cpu_lda_indirect_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDA_INDIRECT_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDA_INDIRECT_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.load_programm(&[CPU::LDA_INDIRECT_Y, 0x25, CPU::LDA_INDIRECT_Y, 0xAA]);
     mem.write16(0x25, 0x1225);
     mem.write16(0xAA, 0x12AA);
     mem.write8(0x1234, 0xAB);
@@ -228,10 +184,7 @@ fn test_cpu_lda_indirect_y() {
     cpu.process(5);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xAB, cpu.a);
-    assert_eq!(
-        CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW,
-        cpu.status
-    );
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.status);
     assert_eq!(5, cpu.cycles_run);
     cpu.y = 0xBB;
     cpu.status = 0;
@@ -246,11 +199,7 @@ fn test_cpu_lda_indirect_y() {
 fn test_cpu_ldx_immediate() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDX_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDX_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x0);
+    mem.load_programm(&[CPU::LDX_IMMEDIATE, 0xCA, CPU::LDX_IMMEDIATE, 0x0]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.process(2);
@@ -269,11 +218,7 @@ fn test_cpu_ldx_immediate() {
 fn test_cpu_ldx_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDX_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDX_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::LDX_ZERO, 0xCA, CPU::LDX_ZERO, 0xCB]);
     mem.write8(0xCA, 0xFE);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -293,11 +238,7 @@ fn test_cpu_ldx_zero_page() {
 fn test_cpu_ldx_zero_page_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDX_ZERO_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDX_ZERO_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::LDX_ZERO_Y, 0x80, CPU::LDX_ZERO_Y, 0x80]);
     mem.write8(0x8F, 0xFE);
     mem.write8(0x7F, 0xA);
     let mut cpu = CPU::new(&mut mem);
@@ -320,10 +261,7 @@ fn test_cpu_ldx_zero_page_y() {
 fn test_cpu_ldx_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDX_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x34);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.load_programm(&[CPU::LDX_ABSOLUTE, 0x34, 0x12]);
     mem.write8(0x1234, 0xAB);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -338,13 +276,7 @@ fn test_cpu_ldx_absolute() {
 fn test_cpu_ldx_absolute_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDX_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::LDX_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::LDX_ABSOLUTE_Y, 0x25, 0x12, CPU::LDX_ABSOLUTE_Y, 0xAA, 0x12]);
     mem.write8(0x1234, 0xAB);
     mem.write8(0x1365, 0x11);
     let mut cpu = CPU::new(&mut mem);
@@ -367,11 +299,7 @@ fn test_cpu_ldx_absolute_y() {
 fn test_cpu_ldy_immediate() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDY_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDY_IMMEDIATE);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x0);
+    mem.load_programm(&[CPU::LDY_IMMEDIATE, 0xCA, CPU::LDY_IMMEDIATE, 0x0]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.process(2);
@@ -390,11 +318,7 @@ fn test_cpu_ldy_immediate() {
 fn test_cpu_ldy_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDY_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDY_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::LDY_ZERO, 0xCA, CPU::LDY_ZERO, 0xCB]);
     mem.write8(0xCA, 0xFE);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -414,11 +338,7 @@ fn test_cpu_ldy_zero_page() {
 fn test_cpu_ldy_zero_page_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDY_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::LDY_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::LDY_ZERO_X, 0x80, CPU::LDY_ZERO_X, 0x80]);
     mem.write8(0x8F, 0xFE);
     mem.write8(0x7F, 0xA);
     let mut cpu = CPU::new(&mut mem);
@@ -441,10 +361,7 @@ fn test_cpu_ldy_zero_page_x() {
 fn test_cpu_ldy_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDY_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x34);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
+    mem.load_programm(&[CPU::LDY_ABSOLUTE, 0x34, 0x12]);
     mem.write8(0x1234, 0xAB);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
@@ -459,13 +376,7 @@ fn test_cpu_ldy_absolute() {
 fn test_cpu_ldy_absolute_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::LDY_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::LDY_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::LDY_ABSOLUTE_X, 0x25, 0x12, CPU::LDY_ABSOLUTE_X, 0xAA, 0x12]);
     mem.write8(0x1234, 0xAB);
     mem.write8(0x1365, 0x11);
     let mut cpu = CPU::new(&mut mem);
@@ -488,11 +399,7 @@ fn test_cpu_ldy_absolute_x() {
 fn test_cpu_sta_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::STA_ZERO, 0xCA, CPU::STA_ZERO, 0xCB]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.a = 0xFE;
@@ -513,11 +420,7 @@ fn test_cpu_sta_zero_page() {
 fn test_cpu_sta_zero_page_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::STA_ZERO_X, 0x80, CPU::STA_ZERO_X, 0x80]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.x = 0x0F;
@@ -540,13 +443,7 @@ fn test_cpu_sta_zero_page_x() {
 fn test_cpu_sta_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::STA_ABSOLUTE, 0x25, 0x12, CPU::STA_ABSOLUTE, 0xAA, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.a = 0xFE;
@@ -567,13 +464,7 @@ fn test_cpu_sta_absolute() {
 fn test_cpu_sta_absolute_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE_X);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::STA_ABSOLUTE_X, 0x25, 0x12, CPU::STA_ABSOLUTE_X, 0xAA, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.x = 0xF;
@@ -596,13 +487,7 @@ fn test_cpu_sta_absolute_x() {
 fn test_cpu_sta_absolute_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STA_ABSOLUTE_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::STA_ABSOLUTE_Y, 0x25, 0x12, CPU::STA_ABSOLUTE_Y, 0xAA, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.y = 0xF;
@@ -625,11 +510,7 @@ fn test_cpu_sta_absolute_y() {
 fn test_cpu_sta_indirect_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_INDIRECT_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_INDIRECT_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.load_programm(&[CPU::STA_INDIRECT_X, 0x25, CPU::STA_INDIRECT_X, 0xAA]);
     mem.write16(0x34, 0x1234);
     mem.write16(0x65, 0x1365);
     let mut cpu = CPU::new(&mut mem);
@@ -658,11 +539,7 @@ fn test_cpu_sta_indirect_x() {
 fn test_cpu_sta_indirect_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load program in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STA_INDIRECT_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STA_INDIRECT_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xAA);
+    mem.load_programm(&[CPU::STA_INDIRECT_Y, 0x25, CPU::STA_INDIRECT_Y, 0xAA]);
     mem.write16(0x25, 0x1225);
     mem.write16(0xAA, 0x12AA);
     let mut cpu = CPU::new(&mut mem);
@@ -690,11 +567,7 @@ fn test_cpu_sta_indirect_y() {
 fn test_cpu_stx_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STX_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::STX_ZERO, 0xCA, CPU::STX_ZERO, 0xCB]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.x = 0xFE;
@@ -715,11 +588,7 @@ fn test_cpu_stx_zero_page() {
 fn test_cpu_stx_zero_page_y() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ZERO_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STX_ZERO_Y);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::STX_ZERO_Y, 0x80, CPU::STX_ZERO_Y, 0x80]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.y = 0x0F;
@@ -742,13 +611,7 @@ fn test_cpu_stx_zero_page_y() {
 fn test_cpu_stx_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STX_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STX_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::STX_ABSOLUTE, 0x25, 0x12, CPU::STX_ABSOLUTE, 0xAA, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.x = 0xFE;
@@ -769,11 +632,7 @@ fn test_cpu_stx_absolute() {
 fn test_cpu_sty_zero_page() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0xCA);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STY_ZERO);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0xCB);
+    mem.load_programm(&[CPU::STY_ZERO, 0xCA, CPU::STY_ZERO, 0xCB]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.y = 0xFE;
@@ -794,11 +653,7 @@ fn test_cpu_sty_zero_page() {
 fn test_cpu_sty_zero_page_x() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x80);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, CPU::STY_ZERO_X);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, 0x80);
+    mem.load_programm(&[CPU::STY_ZERO_X, 0x80, CPU::STY_ZERO_X, 0x80]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.x = 0x0F;
@@ -821,13 +676,7 @@ fn test_cpu_sty_zero_page_x() {
 fn test_cpu_sty_absolute() {
     let mut mem = MEM::new();
     mem.reset();
-    // Load programm in memory
-    mem.write8(RESET_EXEC_ADDRESS as usize, CPU::STY_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 1) as usize, 0x25);
-    mem.write8((RESET_EXEC_ADDRESS + 2) as usize, 0x12);
-    mem.write8((RESET_EXEC_ADDRESS + 3) as usize, CPU::STY_ABSOLUTE);
-    mem.write8((RESET_EXEC_ADDRESS + 4) as usize, 0xAA);
-    mem.write8((RESET_EXEC_ADDRESS + 5) as usize, 0x12);
+    mem.load_programm(&[CPU::STY_ABSOLUTE, 0x25, 0x12, CPU::STY_ABSOLUTE, 0xAA, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
     cpu.y = 0xFE;
@@ -842,6 +691,207 @@ fn test_cpu_sty_absolute() {
     assert_eq!(8, cpu.cycles_run);
     assert_eq!(mem.read8(0x1225), 0xFE);
     assert_eq!(mem.read8(0x12AA), 0x12);
+}
+
+#[test]
+fn test_trans_a_to_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_A_TO_X, CPU::TRANS_A_TO_X]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.a = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(0xFE, cpu.x);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.a = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO, cpu.status);
+    assert_eq!(0, cpu.y);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_trans_a_to_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_A_TO_Y, CPU::TRANS_A_TO_Y]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.a = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(0xFE, cpu.y);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.a = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO, cpu.status);
+    assert_eq!(0, cpu.y);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_trans_x_to_a() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_X_TO_A, CPU::TRANS_X_TO_A]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(0xFE, cpu.a);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.x = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO, cpu.status);
+    assert_eq!(0, cpu.a);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_trans_y_to_a() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_Y_TO_A, CPU::TRANS_Y_TO_A]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.y = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(0xFE, cpu.a);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.y = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO, cpu.status);
+    assert_eq!(0, cpu.a);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_trans_sp_to_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_SP_TO_X, CPU::TRANS_SP_TO_X]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.sp = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(0xFE, cpu.x);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.sp = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO, cpu.status);
+    assert_eq!(0, cpu.x);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_trans_x_to_sp() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::TRANS_X_TO_SP, CPU::TRANS_X_TO_SP]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.x = 0xFE;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(0xFE, cpu.sp);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.x = 0;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(0, cpu.sp);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_push_a_to_sp() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::PUSH_A_TO_SP, CPU::PUSH_A_TO_SP]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.a = 0xFE;
+    cpu.status = CPU::FLAG_ZERO | CPU::FLAG_CARRY;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO | CPU::FLAG_CARRY, cpu.status);
+    assert_eq!(STACK_OFFSET_START - 1, cpu.sp);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.a = 0x12;
+    cpu.status = 0;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0, cpu.status);
+    assert_eq!(STACK_OFFSET_START - 2, cpu.sp);
+    assert_eq!(6, cpu.cycles_run);
+    assert_eq!(mem.read8(STACK_REAL_START), 0xFE);
+    assert_eq!(mem.read8(STACK_REAL_START - 1), 0x12);
+}
+
+#[test]
+fn test_push_stat_to_sp() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::PUSH_STAT_TO_SP, CPU::PUSH_STAT_TO_SP]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.status = CPU::FLAG_ZERO | CPU::FLAG_CARRY;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_ZERO | CPU::FLAG_CARRY, cpu.status);
+    assert_eq!(STACK_OFFSET_START - 1, cpu.sp);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.status = CPU::FLAG_INTERRUPT;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_INTERRUPT, cpu.status);
+    assert_eq!(STACK_OFFSET_START - 2, cpu.sp);
+    assert_eq!(6, cpu.cycles_run);
+    assert_eq!(mem.read8(STACK_REAL_START), CPU::FLAG_ZERO | CPU::FLAG_CARRY);
+    assert_eq!(mem.read8(STACK_REAL_START - 1), CPU::FLAG_INTERRUPT);
+}
+
+#[test]
+fn test_pull_sp_to_a() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::PULL_SP_TO_A, CPU::PULL_SP_TO_A]);
+    mem.write8(STACK_REAL_START, 0xFE);
+    mem.write8(STACK_REAL_START - 1, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.sp = STACK_OFFSET_START - 2;
+    cpu.status = CPU::FLAG_INTERRUPT;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 1, cpu.pc);
+    assert_eq!(CPU::FLAG_INTERRUPT, cpu.status);
+    assert_eq!(STACK_OFFSET_START - 1, cpu.sp);
+    assert_eq!(0x12, cpu.a);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.a = 0;
+    cpu.status = 0;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.status);
+    assert_eq!(STACK_OFFSET_START, cpu.sp);
+    assert_eq!(8, cpu.cycles_run);
+    assert_eq!(0xFE, cpu.a);
 }
 
 #[test]
