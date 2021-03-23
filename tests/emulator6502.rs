@@ -895,24 +895,588 @@ fn test_pull_sp_to_a() {
 }
 
 #[test]
-fn test_cpu_ora_zero_page() {
+fn test_cpu_and_immediate() {
     let mut mem = MEM::new();
     mem.reset();
-    mem.load_programm(&[CPU::ORA_ZERO, 0xCA, CPU::ORA_ZERO, 0xCB]);
-    mem.write8(0xCA, 0xFE);
-    mem.write8(0xCB, 0x1);
+    mem.load_programm(&[CPU::AND_IMMEDIATE, 0xCA, CPU::AND_IMMEDIATE, 0x12]);
     let mut cpu = CPU::new(&mut mem);
     cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xA, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x2, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_ZERO, 0x1, CPU::AND_ZERO, 0x2]);
+    mem.write8(0x1, 0xCA);
+    mem.write8(0x2, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
-    assert_eq!(0xFE, cpu.regs[CPU::REG_A]);
+    assert_eq!(0xA, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x2, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_zero_page_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_ZERO_X, 0x80, CPU::AND_ZERO_X, 0x80]);
+    mem.write8(0x8F, 0xCA);
+    mem.write8(0x7F, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0x0F;
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xA, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xFF;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x2, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(8, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_ABSOLUTE, 0x34, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB1;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xA1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_absolute_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_ABSOLUTE_X, 0x25, 0x12, CPU::AND_ABSOLUTE_X, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xA1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0x0, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_absolute_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_ABSOLUTE_Y, 0x25, 0x12, CPU::AND_ABSOLUTE_Y, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xA1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0x0, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_indirect_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_INDIRECT_X, 0x25, CPU::AND_INDIRECT_X, 0xAA]);
+    mem.write16(0x34, 0x1234);
+    mem.write16(0x65, 0x1365);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xA1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+    // this will cause a wrap around as the addres will be higher than 255
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x0, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(12, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_and_indirect_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::AND_INDIRECT_Y, 0x25, CPU::AND_INDIRECT_Y, 0xAA]);
+    mem.write16(0x25, 0x1225);
+    mem.write16(0xAA, 0x12AA);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xA1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(5, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x0, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(11, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_immediate() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_IMMEDIATE, 0xCA, CPU::EOR_IMMEDIATE, 0x12]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xC1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xD3, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_ZERO, 0x1, CPU::EOR_ZERO, 0x2]);
+    mem.write8(0x1, 0xCA);
+    mem.write8(0x2, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xC1, cpu.regs[CPU::REG_A]);
     assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(3, cpu.cycles_run);
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
-    assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
+    assert_eq!(0xD3, cpu.regs[CPU::REG_A]);
     assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(6, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_zero_page_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_ZERO_X, 0x80, CPU::EOR_ZERO_X, 0x80]);
+    mem.write8(0x8F, 0xCA);
+    mem.write8(0x7F, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0x0F;
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xC1, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xFF;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xD3, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(8, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_ABSOLUTE, 0x34, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB1;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0x1A, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_absolute_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_ABSOLUTE_X, 0x25, 0x12, CPU::EOR_ABSOLUTE_X, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0x1A, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0x44, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_absolute_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_ABSOLUTE_Y, 0x25, 0x12, CPU::EOR_ABSOLUTE_Y, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0x1A, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0x44, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_indirect_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_INDIRECT_X, 0x25, CPU::EOR_INDIRECT_X, 0xAA]);
+    mem.write16(0x34, 0x1234);
+    mem.write16(0x65, 0x1365);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0x1A, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+    // this will cause a wrap around as the addres will be higher than 255
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x44, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(12, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_eor_indirect_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::EOR_INDIRECT_Y, 0x25, CPU::EOR_INDIRECT_Y, 0xAA]);
+    mem.write16(0x25, 0x1225);
+    mem.write16(0xAA, 0x12AA);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0x1A, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(5, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0x44, cpu.regs[CPU::REG_A]);
+    assert_eq!(0, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(11, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_immediate() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_IMMEDIATE, 0xCA, CPU::ORA_IMMEDIATE, 0x12]);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xCB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(2, cpu.cycles_run);
+    cpu.process(2);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xDB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_ZERO, 0x1, CPU::ORA_ZERO, 0x2]);
+    mem.write8(0x1, 0xCA);
+    mem.write8(0x2, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xCB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xDB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_zero_page_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_ZERO_X, 0x80, CPU::ORA_ZERO_X, 0x80]);
+    mem.write8(0x8F, 0xCA);
+    mem.write8(0x7F, 0x12);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0x0F;
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xCB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xFF;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xDB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(8, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_ABSOLUTE, 0x34, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB1;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xBB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_absolute_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_ABSOLUTE_X, 0x25, 0x12, CPU::ORA_ABSOLUTE_X, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xBB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_absolute_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_ABSOLUTE_Y, 0x25, 0x12, CPU::ORA_ABSOLUTE_Y, 0xAA, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(4);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0xBB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 6, cpu.pc);
+    assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(9, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_indirect_x() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_INDIRECT_X, 0x25, CPU::ORA_INDIRECT_X, 0xAA]);
+    mem.write16(0x34, 0x1234);
+    mem.write16(0x65, 0x1365);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_X] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xBB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+    // this will cause a wrap around as the addres will be higher than 255
+    cpu.regs[CPU::REG_X] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(12, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_ora_indirect_y() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::ORA_INDIRECT_Y, 0x25, CPU::ORA_INDIRECT_Y, 0xAA]);
+    mem.write16(0x25, 0x1225);
+    mem.write16(0xAA, 0x12AA);
+    mem.write8(0x1234, 0xAB);
+    mem.write8(0x1365, 0x5E);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_Y] = 0xF;
+    cpu.regs[CPU::REG_A] = 0xB1;
+    // TODO: Flags should not affect the instruction
+    cpu.regs[CPU::REG_STAT] = CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW;
+    cpu.process(5);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xBB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_CARRY | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(5, cpu.cycles_run);
+    cpu.regs[CPU::REG_Y] = 0xBB;
+    cpu.regs[CPU::REG_STAT] = 0;
+    cpu.process(6);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(11, cpu.cycles_run);
 }
 
 #[test]
