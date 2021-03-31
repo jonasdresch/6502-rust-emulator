@@ -82,7 +82,7 @@ fn test_cpu_lda_absolute() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
     assert_eq!(0xAB, cpu.regs[CPU::REG_A]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
 }
 
@@ -205,12 +205,12 @@ fn test_cpu_ldx_immediate() {
     cpu.process(2);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xCA, cpu.regs[CPU::REG_X]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(2, cpu.cycles_run);
     cpu.process(2);
     assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
     assert_eq!(0x0, cpu.regs[CPU::REG_X]);
-    assert_eq!(0b0010_0000, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
 }
 
@@ -225,12 +225,12 @@ fn test_cpu_ldx_zero_page() {
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xFE, cpu.regs[CPU::REG_X]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(3, cpu.cycles_run);
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
     assert_eq!(0x0, cpu.regs[CPU::REG_X]);
-    assert_eq!(0b0010_0000, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
     assert_eq!(6, cpu.cycles_run);
 }
 
@@ -247,7 +247,7 @@ fn test_cpu_ldx_zero_page_y() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xFE, cpu.regs[CPU::REG_X]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
     cpu.regs[CPU::REG_Y] = 0xFF;
     cpu.process(4);
@@ -268,7 +268,7 @@ fn test_cpu_ldx_absolute() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
     assert_eq!(0xAB, cpu.regs[CPU::REG_X]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
 }
 
@@ -305,12 +305,12 @@ fn test_cpu_ldy_immediate() {
     cpu.process(2);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xCA, cpu.regs[CPU::REG_Y]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(2, cpu.cycles_run);
     cpu.process(2);
     assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
     assert_eq!(0x0, cpu.regs[CPU::REG_Y]);
-    assert_eq!(0b0010_0000, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
 }
 
@@ -325,12 +325,12 @@ fn test_cpu_ldy_zero_page() {
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xFE, cpu.regs[CPU::REG_Y]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(3, cpu.cycles_run);
     cpu.process(3);
     assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
     assert_eq!(0x0, cpu.regs[CPU::REG_Y]);
-    assert_eq!(0b0010_0000, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
     assert_eq!(6, cpu.cycles_run);
 }
 
@@ -347,7 +347,7 @@ fn test_cpu_ldy_zero_page_x() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
     assert_eq!(0xFE, cpu.regs[CPU::REG_Y]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
     cpu.regs[CPU::REG_X] = 0xFF;
     cpu.process(4);
@@ -368,7 +368,7 @@ fn test_cpu_ldy_absolute() {
     cpu.process(4);
     assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
     assert_eq!(0xAB, cpu.regs[CPU::REG_Y]);
-    assert_eq!(1, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(4, cpu.cycles_run);
 }
 
@@ -1477,6 +1477,45 @@ fn test_cpu_ora_indirect_y() {
     assert_eq!(0xFF, cpu.regs[CPU::REG_A]);
     assert_eq!(CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
     assert_eq!(11, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_bit_test_zero_page() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::BIT_TEST_ZERO, 0x1, CPU::BIT_TEST_ZERO, 0x2]);
+    mem.write8(0x1, 0xCA);
+    mem.write8(0x2, 0x10);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    cpu.regs[CPU::REG_A] = 0xB;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 2, cpu.pc);
+    assert_eq!(0xB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(3, cpu.cycles_run);
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 4, cpu.pc);
+    assert_eq!(0xB, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(6, cpu.cycles_run);
+}
+
+#[test]
+fn test_cpu_bit_test_absolute() {
+    let mut mem = MEM::new();
+    mem.reset();
+    mem.load_programm(&[CPU::BIT_TEST_ABSOLUTE, 0x34, 0x12]);
+    mem.write8(0x1234, 0xAB);
+    let mut cpu = CPU::new(&mut mem);
+    cpu.reset();
+    // inverse of 0xAB
+    cpu.regs[CPU::REG_A] = 0x54;
+    cpu.process(3);
+    assert_eq!(RESET_EXEC_ADDRESS + 3, cpu.pc);
+    assert_eq!(0x54, cpu.regs[CPU::REG_A]);
+    assert_eq!(CPU::FLAG_ZERO | CPU::FLAG_NEGATIVE, cpu.regs[CPU::REG_STAT]);
+    assert_eq!(4, cpu.cycles_run);
 }
 
 #[test]
