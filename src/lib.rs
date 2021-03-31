@@ -255,15 +255,18 @@ impl<'a> CPU<'a> {
     pub const ORA_ABSOLUTE_Y: u8 = 0x19;
     pub const ORA_INDIRECT_X: u8 = 0x01;
     pub const ORA_INDIRECT_Y: u8 = 0x11;
+    // bit test
+    pub const BIT_TEST_ZERO: u8 = 0x24;
+    pub const BIT_TEST_ABSOLUTE: u8 = 0x2C;
 
     // status flags
-    pub const FLAG_CARRY: u8 = 0b0100_0000;
-    pub const FLAG_ZERO: u8 = 0b0010_0000;
-    pub const FLAG_INTERRUPT: u8 = 0b0001_0000;
+    pub const FLAG_CARRY: u8 = 0b0000_0001;
+    pub const FLAG_ZERO: u8 = 0b0000_0010;
+    pub const FLAG_INTERRUPT: u8 = 0b0000_0100;
     pub const FLAG_DECIMAL: u8 = 0b0000_1000;
-    pub const FLAG_BREAK: u8 = 0b0000_0100;
-    pub const FLAG_OVERFLOW: u8 = 0b0000_0010;
-    pub const FLAG_NEGATIVE: u8 = 0b0000_0001;
+    pub const FLAG_BREAK: u8 = 0b0001_0000;
+    pub const FLAG_OVERFLOW: u8 = 0b0100_0000;
+    pub const FLAG_NEGATIVE: u8 = 0b1000_0000;
 
     // regs
     pub const REG_SP: usize = 0;
@@ -719,6 +722,30 @@ impl<'a> CPU<'a> {
                     let addr = self.fetch_indirect_y_addr(true);
                     self.regs[CPU::REG_A] |= self.read8(addr);
                     self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::BIT_TEST_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let masked = self.regs[CPU::REG_A] & val;
+                    if masked == 0 {
+                        self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+                    } else {
+                        self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+                    }
+                    self.regs[CPU::REG_STAT] &= !(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                    self.regs[CPU::REG_STAT] |= val & (CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                }
+                CPU::BIT_TEST_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr);
+                    let masked = self.regs[CPU::REG_A] & val;
+                    if masked == 0 {
+                        self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+                    } else {
+                        self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+                    }
+                    self.regs[CPU::REG_STAT] &= !(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                    self.regs[CPU::REG_STAT] |= val & (CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
                 }
                 _ => println!("Invalid OP"),
             }
