@@ -1,77 +1,78 @@
 // http://www.obelisk.me.uk/6502/architecture.html
 // http://www.emulator101.com/6502-addressing-modes.html
-// http://nesdev.com/6502_cpu.txt
+// http://nesdev.com/6502_Cpu.txt
 // https://slark.me/c64-downloads/6502-addressing-modes.pdf
 // https://sites.google.com/site/6502asembly/6502-instruction-set/plp
 // https://www.masswerk.at/6502/6502_instruction_set.html
+// http://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 
-struct OPImm {
+struct OpImm {
     reg_index: usize,
 }
-struct OPRead {
+struct OpRead {
     reg_index: usize,
 }
-struct OPReadAnd {
+struct OpReadAnd {
     reg_index: usize,
 }
-struct OPReadEor {
+struct OpReadEor {
     reg_index: usize,
 }
-struct OPReadOra {
+struct OpReadOra {
     reg_index: usize,
 }
-struct OPWrite {
+struct OpWrite {
     reg_index: usize,
 }
-struct OPInv;
+struct OpInv;
 
 trait Operation: Send + Sync {
-    fn execute(&self, cpu: &mut CPU, addr: u16);
+    fn execute(&self, cpu: &mut Cpu, addr: u16);
 }
 
-impl Operation for OPImm {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpImm {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] = addr as u8;
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPRead {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpRead {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] = cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadAnd {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpReadAnd {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] &= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadEor {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpReadEor {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] ^= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadOra {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpReadOra {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] |= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPWrite {
-    fn execute(&self, cpu: &mut CPU, addr: u16) {
+impl Operation for OpWrite {
+    fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.write8(addr, cpu.regs[self.reg_index]);
     }
 }
 
-impl Operation for OPInv {
-    fn execute(&self, _cpu: &mut CPU, _addr: u16) {
+impl Operation for OpInv {
+    fn execute(&self, _cpu: &mut Cpu, _addr: u16) {
         println!("Invalid OP");
     }
 }
@@ -93,97 +94,97 @@ struct AddrModeIndY {
 struct AddrModeInv;
 
 trait AddrMode: Send + Sync {
-    fn process(&self, cpu: &mut CPU) -> u16;
+    fn process(&self, cpu: &mut Cpu) -> u16;
 }
 
 impl AddrMode for AddrModeImm {
-    fn process(&self, cpu: &mut CPU) -> u16 {
+    fn process(&self, cpu: &mut Cpu) -> u16 {
         cpu.read_pc() as u16
     }
 }
 
 impl AddrMode for AddrModeZero {
-    fn process(&self, cpu: &mut CPU) -> u16 {
+    fn process(&self, cpu: &mut Cpu) -> u16 {
         cpu.read_pc() as u16
     }
 }
 
 impl AddrMode for AddrModeZeroX {
-    fn process(&self, cpu: &mut CPU) -> u16 {
-        cpu.fetch_zero_page_addr(cpu.regs[CPU::REG_X])
+    fn process(&self, cpu: &mut Cpu) -> u16 {
+        cpu.fetch_zero_page_addr(cpu.regs[Cpu::REG_X])
     }
 }
 
 impl AddrMode for AddrModeAbs {
-    fn process(&self, cpu: &mut CPU) -> u16 {
+    fn process(&self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_absolute_addr()
     }
 }
 
 impl AddrMode for AddrModeAbsX {
-    fn process(&self, cpu: &mut CPU) -> u16 {
-        cpu.fetch_absolute_indexed_addr(cpu.regs[CPU::REG_X], self.is_read_op)
+    fn process(&self, cpu: &mut Cpu) -> u16 {
+        cpu.fetch_absolute_indexed_addr(cpu.regs[Cpu::REG_X], self.is_read_op)
     }
 }
 
 impl AddrMode for AddrModeAbsY {
-    fn process(&self, cpu: &mut CPU) -> u16 {
-        cpu.fetch_absolute_indexed_addr(cpu.regs[CPU::REG_Y], self.is_read_op)
+    fn process(&self, cpu: &mut Cpu) -> u16 {
+        cpu.fetch_absolute_indexed_addr(cpu.regs[Cpu::REG_Y], self.is_read_op)
     }
 }
 
 impl AddrMode for AddrModeIndX {
-    fn process(&self, cpu: &mut CPU) -> u16 {
+    fn process(&self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_indirect_x_addr()
     }
 }
 
 impl AddrMode for AddrModeIndY {
-    fn process(&self, cpu: &mut CPU) -> u16 {
+    fn process(&self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_indirect_y_addr(self.is_read_op)
     }
 }
 
 impl AddrMode for AddrModeInv {
-    fn process(&self, _cpu: &mut CPU) -> u16 {
+    fn process(&self, _cpu: &mut Cpu) -> u16 {
         0
     }
 }
 
 // Hash is very slow compared to match (3x, 4x slower)
 // static _INST_TABLE: phf::Map<u8, (&dyn AddrMode, &dyn Operation)> = phf::phf_map! {
-//     0xA9u8 => (&AddrModeImm, &OPImm {reg_index: CPU::REG_A}),
-//     0xA5u8 => (&AddrModeZero, &OPRead {reg_index: CPU::REG_A}),
-//     0xB5u8 => (&AddrModeZeroX, &OPRead {reg_index: CPU::REG_A}),
-//     0xADu8 => (&AddrModeAbs, &OPRead {reg_index: CPU::REG_A}),
-//     0xBDu8 => (&AddrModeAbsX {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xB9u8 => (&AddrModeAbsY {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xA1u8 => (&AddrModeIndX, &OPRead {reg_index: CPU::REG_A}),
-//     0xB1u8 => (&AddrModeIndY {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xA2u8 => (&AddrModeImm, &OPImm {reg_index: CPU::REG_X}),
-//     0xBCu8 => (&AddrModeAbsX {is_read_op: true}, &OPRead {reg_index: CPU::REG_Y}),
+//     0xA9u8 => (&AddrModeImm, &OpImm {reg_index: Cpu::REG_A}),
+//     0xA5u8 => (&AddrModeZero, &OpRead {reg_index: Cpu::REG_A}),
+//     0xB5u8 => (&AddrModeZeroX, &OpRead {reg_index: Cpu::REG_A}),
+//     0xADu8 => (&AddrModeAbs, &OpRead {reg_index: Cpu::REG_A}),
+//     0xBDu8 => (&AddrModeAbsX {is_read_op: true}, &OpRead {reg_index: Cpu::REG_A}),
+//     0xB9u8 => (&AddrModeAbsY {is_read_op: true}, &OpRead {reg_index: Cpu::REG_A}),
+//     0xA1u8 => (&AddrModeIndX, &OpRead {reg_index: Cpu::REG_A}),
+//     0xB1u8 => (&AddrModeIndY {is_read_op: true}, &OpRead {reg_index: Cpu::REG_A}),
+//     0xA2u8 => (&AddrModeImm, &OpImm {reg_index: Cpu::REG_X}),
+//     0xBCu8 => (&AddrModeAbsX {is_read_op: true}, &OpRead {reg_index: Cpu::REG_Y}),
 // };
 
 // This is still slower than match, but pretty close
 static INST_VEC: [(&dyn AddrMode, &dyn Operation); 7] = [
-    (&AddrModeInv, &OPInv),                                //BRK
-    (&AddrModeIndX, &OPReadOra { reg_index: CPU::REG_A }), // ORA
-    (&AddrModeInv, &OPInv),
-    (&AddrModeInv, &OPInv),
-    (&AddrModeInv, &OPInv),
-    (&AddrModeZero, &OPReadOra { reg_index: CPU::REG_A }),
-    (&AddrModeImm, &OPImm { reg_index: CPU::REG_A }),
+    (&AddrModeInv, &OpInv),                                //BRK
+    (&AddrModeIndX, &OpReadOra { reg_index: Cpu::REG_A }), // ORA
+    (&AddrModeInv, &OpInv),
+    (&AddrModeInv, &OpInv),
+    (&AddrModeInv, &OpInv),
+    (&AddrModeZero, &OpReadOra { reg_index: Cpu::REG_A }),
+    (&AddrModeImm, &OpImm { reg_index: Cpu::REG_A }),
 ];
 
 // lifetime anotation <'b>
-pub struct CPU<'a> {
+pub struct Cpu<'a> {
     pub pc: u16,
     pub regs: [u8; 5],
     pub cycles_run: u32,
-    mem: &'a mut MEM,
+    mem: &'a mut Mem,
 }
 
-impl<'a> CPU<'a> {
+impl<'a> Cpu<'a> {
     // Instructions
     // Load Operations
     pub const LDA_IMMEDIATE: u8 = 0xA9;
@@ -258,6 +259,33 @@ impl<'a> CPU<'a> {
     // bit test
     pub const BIT_TEST_ZERO: u8 = 0x24;
     pub const BIT_TEST_ABSOLUTE: u8 = 0x2C;
+    // adc
+    pub const ADC_IMMEDIATE: u8 = 0x69;
+    pub const ADC_ZERO: u8 = 0x65;
+    pub const ADC_ZERO_X: u8 = 0x75;
+    pub const ADC_ABSOLUTE: u8 = 0x6D;
+    pub const ADC_ABSOLUTE_X: u8 = 0x7D;
+    pub const ADC_ABSOLUTE_Y: u8 = 0x79;
+    pub const ADC_INDIRECT_X: u8 = 0x61;
+    pub const ADC_INDIRECT_Y: u8 = 0x71;
+    // sbc
+    pub const SBC_IMMEDIATE: u8 = 0xE9;
+    pub const SBC_ZERO: u8 = 0xE5;
+    pub const SBC_ZERO_X: u8 = 0xF5;
+    pub const SBC_ABSOLUTE: u8 = 0xED;
+    pub const SBC_ABSOLUTE_X: u8 = 0xFD;
+    pub const SBC_ABSOLUTE_Y: u8 = 0xF9;
+    pub const SBC_INDIRECT_X: u8 = 0xE1;
+    pub const SBC_INDIRECT_Y: u8 = 0xF1;
+    // cmp
+    pub const CMP_IMMEDIATE: u8 = 0xC9;
+    pub const CMP_ZERO: u8 = 0xC5;
+    pub const CMP_ZERO_X: u8 = 0xD5;
+    pub const CMP_ABSOLUTE: u8 = 0xCD;
+    pub const CMP_ABSOLUTE_X: u8 = 0xDD;
+    pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
+    pub const CMP_INDIRECT_X: u8 = 0xC1;
+    pub const CMP_INDIRECT_Y: u8 = 0xD1;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -275,14 +303,14 @@ impl<'a> CPU<'a> {
     pub const REG_Y: usize = 3;
     pub const REG_STAT: usize = 4;
 
-    pub fn new(mem: &'a mut MEM) -> Self {
-        CPU { pc: 0, regs: [0; 5], cycles_run: 0, mem }
+    pub fn new(mem: &'a mut Mem) -> Self {
+        Cpu { pc: 0, regs: [0; 5], cycles_run: 0, mem }
     }
     pub fn reset(&mut self) {
         self.pc = (self.mem.read8(RESET_VECTOR_ADDR) as u16) << 8
             | self.mem.read8(RESET_VECTOR_ADDR + 1) as u16;
         self.regs = [0; 5];
-        self.regs[CPU::REG_SP] = STACK_OFFSET_START;
+        self.regs[Cpu::REG_SP] = STACK_OFFSET_START;
         self.cycles_run = 0;
     }
 
@@ -306,14 +334,14 @@ impl<'a> CPU<'a> {
     }
 
     fn write_to_stack(&mut self, val: u8) {
-        self.write8(self.regs[CPU::REG_SP] as u16 + STACK_START_ADDR, val);
-        self.regs[CPU::REG_SP] = self.sub(self.regs[CPU::REG_SP], 1);
+        self.write8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR, val);
+        self.regs[Cpu::REG_SP] = self.sub(self.regs[Cpu::REG_SP], 1);
     }
 
     fn read_from_stack(&mut self) -> u8 {
-        self.regs[CPU::REG_SP] = self.sum(self.regs[CPU::REG_SP], 1);
+        self.regs[Cpu::REG_SP] = self.sum(self.regs[Cpu::REG_SP], 1);
         self.cycles_run += 1;
-        self.read8(self.regs[CPU::REG_SP] as u16 + STACK_START_ADDR)
+        self.read8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR)
     }
 
     fn read_pc(&mut self) -> u8 {
@@ -333,32 +361,47 @@ impl<'a> CPU<'a> {
         val1 - val2
     }
 
-    /* fn sum(&mut self, val1: u8, val2: u8, simult: bool) -> u8{
-        // some operations, like reads, could execute in parallel with sum
-        // in this case we do not increment the cycles
-        if !simult {
-            self.cycles_run += 1;
-        }
-        let sum = val1 as u16 + val2 as u16;
-        if sum > 255{
-            self.regs[CPU::REG_STAT] |= CPU::FLAG_CARRY;
+    fn adc(&mut self, val: u8) -> u8 {
+        let carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
+        let sum = self.regs[Cpu::REG_A] as u16 + val as u16 + carry as u16;
+        if sum > 255 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
         } else {
-            self.regs[CPU::REG_STAT] &= !CPU::FLAG_CARRY;
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
         }
-        return sum as u8;
-    } */
+        let of = (self.regs[Cpu::REG_A] ^ sum as u8) & (val ^ sum as u8) & 0x80;
+        if of > 0 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_OVERFLOW;
+        } else {
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_OVERFLOW;
+        }
+        sum as u8
+    }
 
     fn set_load_instructions_flags(&mut self, reg: usize) {
         if self.regs[reg] == 0 {
-            self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
         } else {
-            self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
         }
-        if (self.regs[reg] & 0b1000_0000) > 0 {
-            self.regs[CPU::REG_STAT] |= CPU::FLAG_NEGATIVE;
+        if (self.regs[reg] & Cpu::FLAG_NEGATIVE) > 0 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_NEGATIVE;
         } else {
-            self.regs[CPU::REG_STAT] &= !CPU::FLAG_NEGATIVE;
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
         }
+    }
+
+    fn set_compare_flags(&mut self, reg: usize, val: u8) {
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
+        if self.regs[reg] >= val {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
+        }
+        if self.regs[reg] == val {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
+        }
+        self.regs[Cpu::REG_STAT] |= (self.regs[reg] - val) & Cpu::FLAG_NEGATIVE;
     }
 
     // Methods for the addressing modes
@@ -388,7 +431,7 @@ impl<'a> CPU<'a> {
 
     fn fetch_indirect_x_addr(&mut self) -> u16 {
         let mut ind_addr = self.read_pc();
-        ind_addr = self.sum(ind_addr, self.regs[CPU::REG_X]);
+        ind_addr = self.sum(ind_addr, self.regs[Cpu::REG_X]);
         self.read16(ind_addr as u16)
     }
 
@@ -396,7 +439,7 @@ impl<'a> CPU<'a> {
         let ind_addr = self.read_pc();
         let low = self.read8(ind_addr as u16);
         let high = self.read8((ind_addr + 1) as u16);
-        let mut addr = (self.regs[CPU::REG_Y] as u16) + (low as u16);
+        let mut addr = (self.regs[Cpu::REG_Y] as u16) + (low as u16);
         if addr > 255 || !read_from_addr {
             // penalty
             self.read8(addr);
@@ -423,329 +466,469 @@ impl<'a> CPU<'a> {
         loop {
             let instruction = self.read_pc();
             match instruction {
-                CPU::LDA_IMMEDIATE => {
-                    self.regs[CPU::REG_A] = self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::LDA_IMMEDIATE => {
+                    self.regs[Cpu::REG_A] = self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_ZERO => {
+                Cpu::LDA_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_A] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] = self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::LDA_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_ABSOLUTE => {
+                Cpu::LDA_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::LDA_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::LDA_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_INDIRECT_X => {
+                Cpu::LDA_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDA_INDIRECT_Y => {
+                Cpu::LDA_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    self.regs[CPU::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::LDX_IMMEDIATE => {
-                    self.regs[CPU::REG_X] = self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_X);
+                Cpu::LDX_IMMEDIATE => {
+                    self.regs[Cpu::REG_X] = self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::LDX_ZERO => {
+                Cpu::LDX_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_X] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_X);
+                    self.regs[Cpu::REG_X] = self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::LDX_ZERO_Y => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_Y]);
-                    self.regs[CPU::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_X);
+                Cpu::LDX_ZERO_Y => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_Y]);
+                    self.regs[Cpu::REG_X] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::LDX_ABSOLUTE => {
+                Cpu::LDX_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_X);
+                    self.regs[Cpu::REG_X] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::LDX_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
-                    self.regs[CPU::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_X);
+                Cpu::LDX_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    self.regs[Cpu::REG_X] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::LDY_IMMEDIATE => {
-                    self.regs[CPU::REG_Y] = self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                Cpu::LDY_IMMEDIATE => {
+                    self.regs[Cpu::REG_Y] = self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::LDY_ZERO => {
+                Cpu::LDY_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_Y] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                    self.regs[Cpu::REG_Y] = self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::LDY_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.regs[CPU::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                Cpu::LDY_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.regs[Cpu::REG_Y] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::LDY_ABSOLUTE => {
+                Cpu::LDY_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                    self.regs[Cpu::REG_Y] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::LDY_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
-                    self.regs[CPU::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                Cpu::LDY_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    self.regs[Cpu::REG_Y] = self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::STA_ZERO => {
+                Cpu::STA_ZERO => {
                     let addr = self.read_pc();
-                    self.write8(addr as u16, self.regs[CPU::REG_A]);
+                    self.write8(addr as u16, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                Cpu::STA_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_ABSOLUTE => {
+                Cpu::STA_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], false);
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                Cpu::STA_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], false);
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                Cpu::STA_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], false);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_INDIRECT_X => {
+                Cpu::STA_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STA_INDIRECT_Y => {
+                Cpu::STA_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(false);
-                    self.write8(addr, self.regs[CPU::REG_A]);
+                    self.write8(addr, self.regs[Cpu::REG_A]);
                 }
-                CPU::STX_ZERO => {
+                Cpu::STX_ZERO => {
                     let addr = self.read_pc();
-                    self.write8(addr as u16, self.regs[CPU::REG_X]);
+                    self.write8(addr as u16, self.regs[Cpu::REG_X]);
                 }
-                CPU::STX_ZERO_Y => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_Y]);
-                    self.write8(addr, self.regs[CPU::REG_X]);
+                Cpu::STX_ZERO_Y => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_Y]);
+                    self.write8(addr, self.regs[Cpu::REG_X]);
                 }
-                CPU::STX_ABSOLUTE => {
+                Cpu::STX_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.write8(addr, self.regs[CPU::REG_X]);
+                    self.write8(addr, self.regs[Cpu::REG_X]);
                 }
-                CPU::STY_ZERO => {
+                Cpu::STY_ZERO => {
                     let addr = self.read_pc();
-                    self.write8(addr as u16, self.regs[CPU::REG_Y]);
+                    self.write8(addr as u16, self.regs[Cpu::REG_Y]);
                 }
-                CPU::STY_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.write8(addr, self.regs[CPU::REG_Y]);
+                Cpu::STY_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.write8(addr, self.regs[Cpu::REG_Y]);
                 }
-                CPU::STY_ABSOLUTE => {
+                Cpu::STY_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.write8(addr, self.regs[CPU::REG_Y]);
+                    self.write8(addr, self.regs[Cpu::REG_Y]);
                 }
-                CPU::TRANS_A_TO_X => {
-                    self.regs[CPU::REG_X] = self.regs[CPU::REG_A];
+                Cpu::TRANS_A_TO_X => {
+                    self.regs[Cpu::REG_X] = self.regs[Cpu::REG_A];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(CPU::REG_X);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::TRANS_A_TO_Y => {
-                    self.regs[CPU::REG_Y] = self.regs[CPU::REG_A];
+                Cpu::TRANS_A_TO_Y => {
+                    self.regs[Cpu::REG_Y] = self.regs[Cpu::REG_A];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(CPU::REG_Y);
+                    self.set_load_instructions_flags(Cpu::REG_Y);
                 }
-                CPU::TRANS_X_TO_A => {
-                    self.regs[CPU::REG_A] = self.regs[CPU::REG_X];
+                Cpu::TRANS_X_TO_A => {
+                    self.regs[Cpu::REG_A] = self.regs[Cpu::REG_X];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::TRANS_Y_TO_A => {
-                    self.regs[CPU::REG_A] = self.regs[CPU::REG_Y];
+                Cpu::TRANS_Y_TO_A => {
+                    self.regs[Cpu::REG_A] = self.regs[Cpu::REG_Y];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::TRANS_SP_TO_X => {
-                    self.regs[CPU::REG_X] = self.regs[CPU::REG_SP];
+                Cpu::TRANS_SP_TO_X => {
+                    self.regs[Cpu::REG_X] = self.regs[Cpu::REG_SP];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(CPU::REG_X);
+                    self.set_load_instructions_flags(Cpu::REG_X);
                 }
-                CPU::TRANS_X_TO_SP => {
-                    self.regs[CPU::REG_SP] = self.regs[CPU::REG_X];
+                Cpu::TRANS_X_TO_SP => {
+                    self.regs[Cpu::REG_SP] = self.regs[Cpu::REG_X];
                     self.cycles_run += 1;
                 }
-                CPU::PUSH_A_TO_SP => {
-                    self.write_to_stack(self.regs[CPU::REG_A]);
+                Cpu::PUSH_A_TO_SP => {
+                    self.write_to_stack(self.regs[Cpu::REG_A]);
                 }
-                CPU::PUSH_STAT_TO_SP => {
-                    self.write_to_stack(self.regs[CPU::REG_STAT]);
+                Cpu::PUSH_STAT_TO_SP => {
+                    self.write_to_stack(self.regs[Cpu::REG_STAT]);
                 }
-                CPU::PULL_SP_TO_A => {
-                    self.regs[CPU::REG_A] = self.read_from_stack();
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::PULL_SP_TO_A => {
+                    self.regs[Cpu::REG_A] = self.read_from_stack();
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::PULL_SP_TO_STAT => {
-                    self.regs[CPU::REG_STAT] = self.read_from_stack();
+                Cpu::PULL_SP_TO_STAT => {
+                    self.regs[Cpu::REG_STAT] = self.read_from_stack();
                 }
-                CPU::AND_IMMEDIATE => {
-                    self.regs[CPU::REG_A] &= self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::AND_IMMEDIATE => {
+                    self.regs[Cpu::REG_A] &= self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_ZERO => {
+                Cpu::AND_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_A] &= self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] &= self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::AND_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_ABSOLUTE => {
+                Cpu::AND_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::AND_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::AND_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_INDIRECT_X => {
+                Cpu::AND_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::AND_INDIRECT_Y => {
+                Cpu::AND_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    self.regs[CPU::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] &= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
 
-                CPU::EOR_IMMEDIATE => {
-                    self.regs[CPU::REG_A] ^= self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::EOR_IMMEDIATE => {
+                    self.regs[Cpu::REG_A] ^= self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_ZERO => {
+                Cpu::EOR_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_A] ^= self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::EOR_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_ABSOLUTE => {
+                Cpu::EOR_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::EOR_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::EOR_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_INDIRECT_X => {
+                Cpu::EOR_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::EOR_INDIRECT_Y => {
+                Cpu::EOR_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    self.regs[CPU::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] ^= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-
-                CPU::ORA_IMMEDIATE => {
-                    self.regs[CPU::REG_A] |= self.read_pc();
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::ORA_IMMEDIATE => {
+                    self.regs[Cpu::REG_A] |= self.read_pc();
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_ZERO => {
+                Cpu::ORA_ZERO => {
                     let addr = self.read_pc();
-                    self.regs[CPU::REG_A] |= self.read8(addr as u16);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] |= self.read8(addr as u16);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_ZERO_X => {
-                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::ORA_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_ABSOLUTE => {
+                Cpu::ORA_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_ABSOLUTE_X => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::ORA_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_ABSOLUTE_Y => {
-                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                Cpu::ORA_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_INDIRECT_X => {
+                Cpu::ORA_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::ORA_INDIRECT_Y => {
+                Cpu::ORA_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    self.regs[CPU::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(CPU::REG_A);
+                    self.regs[Cpu::REG_A] |= self.read8(addr);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
-                CPU::BIT_TEST_ZERO => {
+                Cpu::BIT_TEST_ZERO => {
                     let addr = self.read_pc();
                     let val = self.read8(addr as u16);
-                    let masked = self.regs[CPU::REG_A] & val;
+                    let masked = self.regs[Cpu::REG_A] & val;
                     if masked == 0 {
-                        self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+                        self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
                     } else {
-                        self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+                        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
                     }
-                    self.regs[CPU::REG_STAT] &= !(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
-                    self.regs[CPU::REG_STAT] |= val & (CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                    self.regs[Cpu::REG_STAT] &= !(Cpu::FLAG_NEGATIVE | Cpu::FLAG_OVERFLOW);
+                    self.regs[Cpu::REG_STAT] |= val & (Cpu::FLAG_NEGATIVE | Cpu::FLAG_OVERFLOW);
                 }
-                CPU::BIT_TEST_ABSOLUTE => {
+                Cpu::BIT_TEST_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     let val = self.read8(addr);
-                    let masked = self.regs[CPU::REG_A] & val;
+                    let masked = self.regs[Cpu::REG_A] & val;
                     if masked == 0 {
-                        self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+                        self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
                     } else {
-                        self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+                        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
                     }
-                    self.regs[CPU::REG_STAT] &= !(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
-                    self.regs[CPU::REG_STAT] |= val & (CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                    self.regs[Cpu::REG_STAT] &= !(Cpu::FLAG_NEGATIVE | Cpu::FLAG_OVERFLOW);
+                    self.regs[Cpu::REG_STAT] |= val & (Cpu::FLAG_NEGATIVE | Cpu::FLAG_OVERFLOW);
+                }
+                Cpu::ADC_IMMEDIATE => {
+                    let val = self.read_pc();
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::ADC_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_IMMEDIATE => {
+                    let val = 255 - self.read_pc();
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::SBC_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+
+                Cpu::CMP_IMMEDIATE => {
+                    let val = 255 - self.read_pc();
+                    self.set_compare_flags(Cpu::REG_A, val);
+                }
+                Cpu::CMP_ZERO => {
+                    let addr = self.read_pc();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
+                }
+                Cpu::CMP_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[Cpu::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(Cpu::REG_A);
                 }
                 _ => println!("Invalid OP"),
             }
@@ -765,19 +948,19 @@ pub const STACK_OFFSET_START: u8 = 0xFF;
 // for reading directly fro mthe memmory on tests
 pub const STACK_REAL_START: usize = STACK_START_ADDR as usize + STACK_OFFSET_START as usize;
 
-pub struct MEM {
+pub struct Mem {
     mem: [u8; MEM_SIZE],
 }
 
-impl Default for MEM {
+impl Default for Mem {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MEM {
-    pub fn new() -> MEM {
-        MEM { mem: [0; MEM_SIZE] }
+impl Mem {
+    pub fn new() -> Mem {
+        Mem { mem: [0; MEM_SIZE] }
     }
 
     pub fn read8(&self, address: usize) -> u8 {
