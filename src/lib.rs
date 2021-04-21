@@ -4,73 +4,74 @@
 // https://slark.me/c64-downloads/6502-addressing-modes.pdf
 // https://sites.google.com/site/6502asembly/6502-instruction-set/plp
 // https://www.masswerk.at/6502/6502_instruction_set.html
+// http://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 
-struct OPImm {
+struct OpImm {
     reg_index: usize,
 }
-struct OPRead {
+struct OpRead {
     reg_index: usize,
 }
-struct OPReadAnd {
+struct OpReadAnd {
     reg_index: usize,
 }
-struct OPReadEor {
+struct OpReadEor {
     reg_index: usize,
 }
-struct OPReadOra {
+struct OpReadOra {
     reg_index: usize,
 }
-struct OPWrite {
+struct OpWrite {
     reg_index: usize,
 }
-struct OPInv;
+struct OpInv;
 
 trait Operation: Send + Sync {
     fn execute(&self, cpu: &mut CPU, addr: u16);
 }
 
-impl Operation for OPImm {
+impl Operation for OpImm {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.regs[self.reg_index] = addr as u8;
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPRead {
+impl Operation for OpRead {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.regs[self.reg_index] = cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadAnd {
+impl Operation for OpReadAnd {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.regs[self.reg_index] &= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadEor {
+impl Operation for OpReadEor {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.regs[self.reg_index] ^= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPReadOra {
+impl Operation for OpReadOra {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.regs[self.reg_index] |= cpu.read8(addr);
         cpu.set_load_instructions_flags(self.reg_index);
     }
 }
 
-impl Operation for OPWrite {
+impl Operation for OpWrite {
     fn execute(&self, cpu: &mut CPU, addr: u16) {
         cpu.write8(addr, cpu.regs[self.reg_index]);
     }
 }
 
-impl Operation for OPInv {
+impl Operation for OpInv {
     fn execute(&self, _cpu: &mut CPU, _addr: u16) {
         println!("Invalid OP");
     }
@@ -152,27 +153,27 @@ impl AddrMode for AddrModeInv {
 
 // Hash is very slow compared to match (3x, 4x slower)
 // static _INST_TABLE: phf::Map<u8, (&dyn AddrMode, &dyn Operation)> = phf::phf_map! {
-//     0xA9u8 => (&AddrModeImm, &OPImm {reg_index: CPU::REG_A}),
-//     0xA5u8 => (&AddrModeZero, &OPRead {reg_index: CPU::REG_A}),
-//     0xB5u8 => (&AddrModeZeroX, &OPRead {reg_index: CPU::REG_A}),
-//     0xADu8 => (&AddrModeAbs, &OPRead {reg_index: CPU::REG_A}),
-//     0xBDu8 => (&AddrModeAbsX {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xB9u8 => (&AddrModeAbsY {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xA1u8 => (&AddrModeIndX, &OPRead {reg_index: CPU::REG_A}),
-//     0xB1u8 => (&AddrModeIndY {is_read_op: true}, &OPRead {reg_index: CPU::REG_A}),
-//     0xA2u8 => (&AddrModeImm, &OPImm {reg_index: CPU::REG_X}),
-//     0xBCu8 => (&AddrModeAbsX {is_read_op: true}, &OPRead {reg_index: CPU::REG_Y}),
+//     0xA9u8 => (&AddrModeImm, &OpImm {reg_index: CPU::REG_A}),
+//     0xA5u8 => (&AddrModeZero, &OpRead {reg_index: CPU::REG_A}),
+//     0xB5u8 => (&AddrModeZeroX, &OpRead {reg_index: CPU::REG_A}),
+//     0xADu8 => (&AddrModeAbs, &OpRead {reg_index: CPU::REG_A}),
+//     0xBDu8 => (&AddrModeAbsX {is_read_op: true}, &OpRead {reg_index: CPU::REG_A}),
+//     0xB9u8 => (&AddrModeAbsY {is_read_op: true}, &OpRead {reg_index: CPU::REG_A}),
+//     0xA1u8 => (&AddrModeIndX, &OpRead {reg_index: CPU::REG_A}),
+//     0xB1u8 => (&AddrModeIndY {is_read_op: true}, &OpRead {reg_index: CPU::REG_A}),
+//     0xA2u8 => (&AddrModeImm, &OpImm {reg_index: CPU::REG_X}),
+//     0xBCu8 => (&AddrModeAbsX {is_read_op: true}, &OpRead {reg_index: CPU::REG_Y}),
 // };
 
 // This is still slower than match, but pretty close
 static INST_VEC: [(&dyn AddrMode, &dyn Operation); 7] = [
-    (&AddrModeInv, &OPInv),                                //BRK
-    (&AddrModeIndX, &OPReadOra { reg_index: CPU::REG_A }), // ORA
-    (&AddrModeInv, &OPInv),
-    (&AddrModeInv, &OPInv),
-    (&AddrModeInv, &OPInv),
-    (&AddrModeZero, &OPReadOra { reg_index: CPU::REG_A }),
-    (&AddrModeImm, &OPImm { reg_index: CPU::REG_A }),
+    (&AddrModeInv, &OpInv),                                //BRK
+    (&AddrModeIndX, &OpReadOra { reg_index: CPU::REG_A }), // ORA
+    (&AddrModeInv, &OpInv),
+    (&AddrModeInv, &OpInv),
+    (&AddrModeInv, &OpInv),
+    (&AddrModeZero, &OpReadOra { reg_index: CPU::REG_A }),
+    (&AddrModeImm, &OpImm { reg_index: CPU::REG_A }),
 ];
 
 // lifetime anotation <'b>
@@ -258,6 +259,33 @@ impl<'a> CPU<'a> {
     // bit test
     pub const BIT_TEST_ZERO: u8 = 0x24;
     pub const BIT_TEST_ABSOLUTE: u8 = 0x2C;
+    // adc
+    pub const ADC_IMMEDIATE: u8 = 0x69;
+    pub const ADC_ZERO: u8 = 0x65;
+    pub const ADC_ZERO_X: u8 = 0x75;
+    pub const ADC_ABSOLUTE: u8 = 0x6D;
+    pub const ADC_ABSOLUTE_X: u8 = 0x7D;
+    pub const ADC_ABSOLUTE_Y: u8 = 0x79;
+    pub const ADC_INDIRECT_X: u8 = 0x61;
+    pub const ADC_INDIRECT_Y: u8 = 0x71;
+    // sbc
+    pub const SBC_IMMEDIATE: u8 = 0xE9;
+    pub const SBC_ZERO: u8 = 0xE5;
+    pub const SBC_ZERO_X: u8 = 0xF5;
+    pub const SBC_ABSOLUTE: u8 = 0xED;
+    pub const SBC_ABSOLUTE_X: u8 = 0xFD;
+    pub const SBC_ABSOLUTE_Y: u8 = 0xF9;
+    pub const SBC_INDIRECT_X: u8 = 0xE1;
+    pub const SBC_INDIRECT_Y: u8 = 0xF1;
+    // cmp
+    pub const CMP_IMMEDIATE: u8 = 0xC9;
+    pub const CMP_ZERO: u8 = 0xC5;
+    pub const CMP_ZERO_X: u8 = 0xD5;
+    pub const CMP_ABSOLUTE: u8 = 0xCD;
+    pub const CMP_ABSOLUTE_X: u8 = 0xDD;
+    pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
+    pub const CMP_INDIRECT_X: u8 = 0xC1;
+    pub const CMP_INDIRECT_Y: u8 = 0xD1;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -333,20 +361,22 @@ impl<'a> CPU<'a> {
         val1 - val2
     }
 
-    /* fn sum(&mut self, val1: u8, val2: u8, simult: bool) -> u8{
-        // some operations, like reads, could execute in parallel with sum
-        // in this case we do not increment the cycles
-        if !simult {
-            self.cycles_run += 1;
-        }
-        let sum = val1 as u16 + val2 as u16;
-        if sum > 255{
+    fn adc(&mut self, val: u8) -> u8 {
+        let carry = self.regs[CPU::REG_STAT] & CPU::FLAG_CARRY;
+        let sum = self.regs[CPU::REG_A] as u16 + val as u16 + carry as u16;
+        if sum > 255 {
             self.regs[CPU::REG_STAT] |= CPU::FLAG_CARRY;
         } else {
             self.regs[CPU::REG_STAT] &= !CPU::FLAG_CARRY;
         }
-        return sum as u8;
-    } */
+        let of = (self.regs[CPU::REG_A] ^ sum as u8) & (val ^ sum as u8) & 0x80;
+        if of > 0 {
+            self.regs[CPU::REG_STAT] |= CPU::FLAG_OVERFLOW;
+        } else {
+            self.regs[CPU::REG_STAT] &= !CPU::FLAG_OVERFLOW;
+        }
+        sum as u8
+    }
 
     fn set_load_instructions_flags(&mut self, reg: usize) {
         if self.regs[reg] == 0 {
@@ -354,11 +384,24 @@ impl<'a> CPU<'a> {
         } else {
             self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
         }
-        if (self.regs[reg] & 0b1000_0000) > 0 {
+        if (self.regs[reg] & CPU::FLAG_NEGATIVE) > 0 {
             self.regs[CPU::REG_STAT] |= CPU::FLAG_NEGATIVE;
         } else {
             self.regs[CPU::REG_STAT] &= !CPU::FLAG_NEGATIVE;
         }
+    }
+
+    fn set_compare_flags(&mut self, reg: usize, val: u8) {
+        self.regs[CPU::REG_STAT] &= !CPU::FLAG_CARRY;
+        self.regs[CPU::REG_STAT] &= !CPU::FLAG_ZERO;
+        self.regs[CPU::REG_STAT] &= !CPU::FLAG_NEGATIVE;
+        if self.regs[reg] >= val {
+            self.regs[CPU::REG_STAT] |= CPU::FLAG_CARRY;
+        }
+        if self.regs[reg] == val {
+            self.regs[CPU::REG_STAT] |= CPU::FLAG_ZERO;
+        }
+        self.regs[CPU::REG_STAT] |= (self.regs[reg] - val) & CPU::FLAG_NEGATIVE;
     }
 
     // Methods for the addressing modes
@@ -683,7 +726,6 @@ impl<'a> CPU<'a> {
                     self.regs[CPU::REG_A] ^= self.read8(addr);
                     self.set_load_instructions_flags(CPU::REG_A);
                 }
-
                 CPU::ORA_IMMEDIATE => {
                     self.regs[CPU::REG_A] |= self.read_pc();
                     self.set_load_instructions_flags(CPU::REG_A);
@@ -746,6 +788,147 @@ impl<'a> CPU<'a> {
                     }
                     self.regs[CPU::REG_STAT] &= !(CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
                     self.regs[CPU::REG_STAT] |= val & (CPU::FLAG_NEGATIVE | CPU::FLAG_OVERFLOW);
+                }
+                CPU::ADC_IMMEDIATE => {
+                    let val = self.read_pc();
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::ADC_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_IMMEDIATE => {
+                    let val = 255 - self.read_pc();
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::SBC_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+
+                CPU::CMP_IMMEDIATE => {
+                    let val = 255 - self.read_pc();
+                    self.set_compare_flags(CPU::REG_A, val);
+                }
+                CPU::CMP_ZERO => {
+                    let addr = self.read_pc();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[CPU::REG_X]);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_X], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_ABSOLUTE_Y => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[CPU::REG_Y], true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_INDIRECT_X => {
+                    let addr = self.fetch_indirect_x_addr();
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
+                }
+                CPU::CMP_INDIRECT_Y => {
+                    let addr = self.fetch_indirect_y_addr(true);
+                    let val = 255 - self.read8(addr as u16);
+                    self.regs[CPU::REG_A] = self.adc(val);
+                    self.set_load_instructions_flags(CPU::REG_A);
                 }
                 _ => println!("Invalid OP"),
             }
