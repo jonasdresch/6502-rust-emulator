@@ -6,6 +6,8 @@
 // https://www.masswerk.at/6502/6502_instruction_set.html
 // http://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 
+// No decimal mode
+
 struct OpImm {
     reg_index: usize,
 }
@@ -401,7 +403,8 @@ impl<'a> Cpu<'a> {
         if self.regs[reg] == val {
             self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
         }
-        self.regs[Cpu::REG_STAT] |= (self.regs[reg] - val) & Cpu::FLAG_NEGATIVE;
+        let sub_result = self.regs[reg].overflowing_sub(val).0;
+        self.regs[Cpu::REG_STAT] |= sub_result & Cpu::FLAG_NEGATIVE;
     }
 
     // Methods for the addressing modes
@@ -883,52 +886,44 @@ impl<'a> Cpu<'a> {
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_load_instructions_flags(Cpu::REG_A);
                 }
-
                 Cpu::CMP_IMMEDIATE => {
-                    let val = 255 - self.read_pc();
+                    let val = self.read_pc();
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ZERO => {
                     let addr = self.read_pc();
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    let val = 255 - self.read8(addr as u16);
-                    self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_A, val);
                 }
                 _ => println!("Invalid OP"),
             }
