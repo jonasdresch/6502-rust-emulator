@@ -288,6 +288,14 @@ impl<'a> Cpu<'a> {
     pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
     pub const CMP_INDIRECT_X: u8 = 0xC1;
     pub const CMP_INDIRECT_Y: u8 = 0xD1;
+    // cpx
+    pub const CPX_IMMEDIATE: u8 = 0xE0;
+    pub const CPX_ZERO: u8 = 0xE4;
+    pub const CPX_ABSOLUTE: u8 = 0xEC;
+    // cpy
+    pub const CPY_IMMEDIATE: u8 = 0xC0;
+    pub const CPY_ZERO: u8 = 0xC4;
+    pub const CPY_ABSOLUTE: u8 = 0xCC;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -924,6 +932,34 @@ impl<'a> Cpu<'a> {
                     let addr = self.fetch_indirect_y_addr(true);
                     let val = self.read8(addr as u16);
                     self.set_compare_flags(Cpu::REG_A, val);
+                }
+                Cpu::CPX_IMMEDIATE => {
+                    let val = self.read_pc();
+                    self.set_compare_flags(Cpu::REG_X, val);
+                }
+                Cpu::CPX_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_X, val);
+                }
+                Cpu::CPX_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_X, val);
+                }
+                Cpu::CPY_IMMEDIATE => {
+                    let val = self.read_pc();
+                    self.set_compare_flags(Cpu::REG_Y, val);
+                }
+                Cpu::CPY_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_Y, val);
+                }
+                Cpu::CPY_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    self.set_compare_flags(Cpu::REG_Y, val);
                 }
                 _ => println!("Invalid OP"),
             }

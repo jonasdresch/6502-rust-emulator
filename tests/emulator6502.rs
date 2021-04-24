@@ -282,6 +282,20 @@ fn mem_trans_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16) ->
 #[case::cmp_ind_x2(mem_ind_x(Cpu::CMP_INDIRECT_X, 0xAA, 0x1234, 0xBB, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0x7F, Cpu::REG_X, 0xBB)]
 #[case::cmp_ind_y1(mem_ind_y(Cpu::CMP_INDIRECT_Y, 0x25, 0x1225, 0xF, 0xFF), 0x1, 0, Cpu::REG_A, 0x1, Cpu::REG_Y, 0xF)]
 #[case::cmp_ind_y2(mem_ind_y(Cpu::CMP_INDIRECT_Y, 0xAA, 0x12AA, 0xBB, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0x7F, Cpu::REG_Y, 0xBB)]
+// CPX
+#[case::cpx_imm1(mem_imm(Cpu::CPX_IMMEDIATE, 0xFF), 0x1, 0, Cpu::REG_X, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpx_imm2(mem_imm(Cpu::CPX_IMMEDIATE, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_X, 0x7F, Cpu::REG_STAT, 0)]
+#[case::cpx_zero1(mem_zero(Cpu::CPX_ZERO, 0x1, 0xFF), 0x1, 0, Cpu::REG_X, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpx_zero2(mem_zero(Cpu::CPX_ZERO, 0x2, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_X, 0x7F, Cpu::REG_STAT, 0)]
+#[case::cpx_abs1(mem_abs(Cpu::CPX_ABSOLUTE, 0x1234, 0xFF), 0x1, 0, Cpu::REG_X, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpx_abs2(mem_abs(Cpu::CPX_ABSOLUTE, 0x1234, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_X, 0x7F, Cpu::REG_STAT, 0)]
+// CPY
+#[case::cpy_imm1(mem_imm(Cpu::CPY_IMMEDIATE, 0xFF), 0x1, 0, Cpu::REG_Y, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpy_imm2(mem_imm(Cpu::CPY_IMMEDIATE, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, Cpu::REG_STAT, 0)]
+#[case::cpy_zero1(mem_zero(Cpu::CPY_ZERO, 0x1, 0xFF), 0x1, 0, Cpu::REG_Y, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpy_zero2(mem_zero(Cpu::CPY_ZERO, 0x2, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, Cpu::REG_STAT, 0)]
+#[case::cpy_abs1(mem_abs(Cpu::CPY_ABSOLUTE, 0x1234, 0xFF), 0x1, 0, Cpu::REG_Y, 0x1, Cpu::REG_STAT, 0)]
+#[case::cpy_abs2(mem_abs(Cpu::CPY_ABSOLUTE, 0x1234, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, Cpu::REG_STAT, 0)]
 fn load_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
