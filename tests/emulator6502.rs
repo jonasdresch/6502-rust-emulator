@@ -9,6 +9,14 @@ struct Operation {
 }
 
 #[fixture]
+fn mem_implied(#[default = 0] instrunction: u8) -> Operation {
+    let mut mem = Mem::new();
+    mem.reset();
+    mem.load_programm(&[instrunction]);
+    Operation { cycles: 2, bytes: 1, mem, addr: 0 }
+}
+
+#[fixture]
 fn mem_imm(#[default = 0] instrunction: u8, #[default = 0] value: u8) -> Operation {
     let mut mem = Mem::new();
     mem.reset();
@@ -26,6 +34,13 @@ fn mem_zero(#[default = 0] instrunction: u8, #[default = 0] addr: u8, #[default 
 }
 
 #[fixture]
+fn mem_zero_read_store(#[default = 0] instrunction: u8, #[default = 0] addr: u8, #[default = 0] value: u8) -> Operation {
+    let mut op = mem_zero(instrunction, addr, value);
+    op.cycles = 5;
+    op
+}
+
+#[fixture]
 fn mem_zero_index(#[default = 0] instrunction: u8, #[default = 0] addr: u8, #[default = 0] index: u8, #[default = 0] value: u8) -> Operation {
     let mut mem = Mem::new();
     mem.reset();
@@ -36,12 +51,26 @@ fn mem_zero_index(#[default = 0] instrunction: u8, #[default = 0] addr: u8, #[de
 }
 
 #[fixture]
+fn mem_zero_index_read_store(#[default = 0] instrunction: u8, #[default = 0] addr: u8, #[default = 0] index: u8, #[default = 0] value: u8) -> Operation {
+    let mut op = mem_zero_index(instrunction, addr, index, value);
+    op.cycles = 6;
+    op
+}
+
+#[fixture]
 fn mem_abs(#[default = 0] instrunction: u8, #[default = 0] addr: u16, #[default = 0] value: u8) -> Operation {
     let mut mem = Mem::new();
     mem.reset();
     mem.load_programm(&[instrunction, addr as u8, ((addr & 0xFF00) >> 8) as u8]);
     mem.write8(addr as usize, value);
     Operation { cycles: 4, bytes: 3, mem, addr: addr as u16 }
+}
+
+#[fixture]
+fn mem_abs_read_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16, #[default = 0] value: u8) -> Operation {
+    let mut op = mem_abs(instrunction, addr, value);
+    op.cycles = 6;
+    op
 }
 
 #[fixture]
@@ -62,6 +91,13 @@ fn mem_abs_index(#[default = 0] instrunction: u8, #[default = 0] addr: u16, #[de
 fn mem_abs_index_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16, #[default = 0] index: u8) -> Operation {
     let mut op = mem_abs_index(instrunction, addr, index, 0);
     op.cycles = 5;
+    op
+}
+
+#[fixture]
+fn mem_abs_index_read_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16, #[default = 0] index: u8, #[default = 0] value: u8) -> Operation {
+    let mut op = mem_abs_index(instrunction, addr, index, value);
+    op.cycles = 7;
     op
 }
 
@@ -296,6 +332,18 @@ fn mem_trans_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16) ->
 #[case::cpy_zero2(mem_zero(Cpu::CPY_ZERO, 0x2, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, Cpu::REG_STAT, 0)]
 #[case::cpy_abs1(mem_abs(Cpu::CPY_ABSOLUTE, 0x1234, 0xFF), 0x1, 0, Cpu::REG_Y, 0x1, Cpu::REG_STAT, 0)]
 #[case::cpy_abs2(mem_abs(Cpu::CPY_ABSOLUTE, 0x1234, 0x80), 0x7F, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, Cpu::REG_STAT, 0)]
+// INX
+#[case::inx_implied1(mem_implied(Cpu::INX_IMPLIED), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_X, 0x7F, 10, 0)]
+#[case::inx_implied2(mem_implied(Cpu::INX_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_X, 0xFF, 10, 0)]
+// INY
+#[case::iny_implied1(mem_implied(Cpu::INY_IMPLIED), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0x7F, 10, 0)]
+#[case::iny_implied2(mem_implied(Cpu::INY_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_Y, 0xFF, 10, 0)]
+// DEX
+#[case::dex_implied1(mem_implied(Cpu::DEX_IMPLIED), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_X, 0, 10, 0)]
+#[case::dex_implied2(mem_implied(Cpu::DEX_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_X, 0x1, 10, 0)]
+// DEY
+#[case::dey_implied1(mem_implied(Cpu::DEY_IMPLIED), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0, 10, 0)]
+#[case::dey_implied2(mem_implied(Cpu::DEY_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_Y, 0x1, 10, 0)]
 fn load_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
@@ -347,6 +395,24 @@ fn load_tests(
 #[case::stx_zero_y2(mem_zero_index(Cpu::STX_ZERO_Y, 0x80, 0xFF, 0), 0xA, 0, Cpu::REG_X, 0xA, Cpu::REG_Y, 0xFF)]
 #[case::stx_abs1(mem_abs(Cpu::STX_ABSOLUTE, 0x1225, 0), 0xFE, 0, Cpu::REG_X, 0xFE, 10, 0)]
 #[case::stx_abs2(mem_abs(Cpu::STX_ABSOLUTE, 0x12AA, 0), 0x12, 0, Cpu::REG_X, 0x12, 10, 0)]
+// INC
+#[case::inc_zero1(mem_zero_read_store(Cpu::INC_ZERO, 0xCA, 0x7F), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, 10, 0)]
+#[case::inc_zero2(mem_zero_read_store(Cpu::INC_ZERO, 0xCB, 0xFF), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0, 10, 0)]
+#[case::inc_zero_x1(mem_zero_index_read_store(Cpu::INC_ZERO_X, 0x80, 0x0F, 0x7F), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::inc_zero_x2(mem_zero_index_read_store(Cpu::INC_ZERO_X, 0x80, 0xFF, 0xFF), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::inc_abs1(mem_abs_read_store(Cpu::INC_ABSOLUTE, 0x1225, 0x7F), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0xFE, 10, 0)]
+#[case::inc_abs2(mem_abs_read_store(Cpu::INC_ABSOLUTE, 0x12AA, 0xFF), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x12, 10, 0)]
+#[case::inc_abs_x1(mem_abs_index_read_store(Cpu::INC_ABSOLUTE_X, 0x1225, 0xF, 0x7F), 0x80, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
+#[case::inc_abs_x2(mem_abs_index_read_store(Cpu::INC_ABSOLUTE_X, 0x12AA, 0xBB, 0xFF), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
+// DEC
+#[case::dec_zero1(mem_zero_read_store(Cpu::DEC_ZERO, 0xCA, 0x0), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, 10, 0)]
+#[case::dec_zero2(mem_zero_read_store(Cpu::DEC_ZERO, 0xCB, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0, 10, 0)]
+#[case::dec_zero_x1(mem_zero_index_read_store(Cpu::DEC_ZERO_X, 0x80, 0x0F, 0), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::dec_zero_x2(mem_zero_index_read_store(Cpu::DEC_ZERO_X, 0x80, 0xFF, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::dec_abs1(mem_abs_read_store(Cpu::DEC_ABSOLUTE, 0x1225, 0), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0xFE, 10, 0)]
+#[case::dec_abs2(mem_abs_read_store(Cpu::DEC_ABSOLUTE, 0x12AA, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x12, 10, 0)]
+#[case::dec_abs_x1(mem_abs_index_read_store(Cpu::DEC_ABSOLUTE_X, 0x1225, 0xF, 0), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
+#[case::dec_abs_x2(mem_abs_index_read_store(Cpu::DEC_ABSOLUTE_X, 0x12AA, 0xBB, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
 fn store_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
