@@ -35,35 +35,35 @@ trait Operation: Send + Sync {
 impl Operation for OpImm {
     fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] = addr as u8;
-        cpu.set_load_instructions_flags(self.reg_index);
+        cpu.set_zero_negative_flags(cpu.regs[self.reg_index]);
     }
 }
 
 impl Operation for OpRead {
     fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] = cpu.read8(addr);
-        cpu.set_load_instructions_flags(self.reg_index);
+        cpu.set_zero_negative_flags(cpu.regs[self.reg_index]);
     }
 }
 
 impl Operation for OpReadAnd {
     fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] &= cpu.read8(addr);
-        cpu.set_load_instructions_flags(self.reg_index);
+        cpu.set_zero_negative_flags(cpu.regs[self.reg_index]);
     }
 }
 
 impl Operation for OpReadEor {
     fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] ^= cpu.read8(addr);
-        cpu.set_load_instructions_flags(self.reg_index);
+        cpu.set_zero_negative_flags(cpu.regs[self.reg_index]);
     }
 }
 
 impl Operation for OpReadOra {
     fn execute(&self, cpu: &mut Cpu, addr: u16) {
         cpu.regs[self.reg_index] |= cpu.read8(addr);
-        cpu.set_load_instructions_flags(self.reg_index);
+        cpu.set_zero_negative_flags(cpu.regs[self.reg_index]);
     }
 }
 
@@ -296,6 +296,24 @@ impl<'a> Cpu<'a> {
     pub const CPY_IMMEDIATE: u8 = 0xC0;
     pub const CPY_ZERO: u8 = 0xC4;
     pub const CPY_ABSOLUTE: u8 = 0xCC;
+    // inc
+    pub const INC_ZERO: u8 = 0xE6;
+    pub const INC_ZERO_X: u8 = 0xF6;
+    pub const INC_ABSOLUTE: u8 = 0xEE;
+    pub const INC_ABSOLUTE_X: u8 = 0xFE;
+    // inx
+    pub const INX_IMPLIED: u8 = 0xE8;
+    // iny
+    pub const INY_IMPLIED: u8 = 0xC8;
+    // dec
+    pub const DEC_ZERO: u8 = 0xC6;
+    pub const DEC_ZERO_X: u8 = 0xD6;
+    pub const DEC_ABSOLUTE: u8 = 0xCE;
+    pub const DEC_ABSOLUTE_X: u8 = 0xDE;
+    // dex
+    pub const DEX_IMPLIED: u8 = 0xCA;
+    // dey
+    pub const DEY_IMPLIED: u8 = 0x88;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -368,7 +386,7 @@ impl<'a> Cpu<'a> {
 
     fn sub(&mut self, val1: u8, val2: u8) -> u8 {
         self.cycles_run += 1;
-        val1 - val2
+        val1.overflowing_sub(val2).0
     }
 
     fn adc(&mut self, val: u8) -> u8 {
@@ -388,13 +406,13 @@ impl<'a> Cpu<'a> {
         sum as u8
     }
 
-    fn set_load_instructions_flags(&mut self, reg: usize) {
-        if self.regs[reg] == 0 {
+    fn set_zero_negative_flags(&mut self, val: u8) {
+        if val == 0 {
             self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
         } else {
             self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
         }
-        if (self.regs[reg] & Cpu::FLAG_NEGATIVE) > 0 {
+        if (val & Cpu::FLAG_NEGATIVE) > 0 {
             self.regs[Cpu::REG_STAT] |= Cpu::FLAG_NEGATIVE;
         } else {
             self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
@@ -479,90 +497,90 @@ impl<'a> Cpu<'a> {
             match instruction {
                 Cpu::LDA_IMMEDIATE => {
                     self.regs[Cpu::REG_A] = self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_A] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDA_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     self.regs[Cpu::REG_A] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::LDX_IMMEDIATE => {
                     self.regs[Cpu::REG_X] = self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::LDX_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_X] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::LDX_ZERO_Y => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_Y]);
                     self.regs[Cpu::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::LDX_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::LDX_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     self.regs[Cpu::REG_X] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::LDY_IMMEDIATE => {
                     self.regs[Cpu::REG_Y] = self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::LDY_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_Y] = self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::LDY_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     self.regs[Cpu::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::LDY_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::LDY_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     self.regs[Cpu::REG_Y] = self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::STA_ZERO => {
                     let addr = self.read_pc();
@@ -619,27 +637,27 @@ impl<'a> Cpu<'a> {
                 Cpu::TRANS_A_TO_X => {
                     self.regs[Cpu::REG_X] = self.regs[Cpu::REG_A];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::TRANS_A_TO_Y => {
                     self.regs[Cpu::REG_Y] = self.regs[Cpu::REG_A];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(Cpu::REG_Y);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 Cpu::TRANS_X_TO_A => {
                     self.regs[Cpu::REG_A] = self.regs[Cpu::REG_X];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::TRANS_Y_TO_A => {
                     self.regs[Cpu::REG_A] = self.regs[Cpu::REG_Y];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::TRANS_SP_TO_X => {
                     self.regs[Cpu::REG_X] = self.regs[Cpu::REG_SP];
                     self.cycles_run += 1;
-                    self.set_load_instructions_flags(Cpu::REG_X);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
                 }
                 Cpu::TRANS_X_TO_SP => {
                     self.regs[Cpu::REG_SP] = self.regs[Cpu::REG_X];
@@ -653,128 +671,128 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::PULL_SP_TO_A => {
                     self.regs[Cpu::REG_A] = self.read_from_stack();
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::PULL_SP_TO_STAT => {
                     self.regs[Cpu::REG_STAT] = self.read_from_stack();
                 }
                 Cpu::AND_IMMEDIATE => {
                     self.regs[Cpu::REG_A] &= self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_A] &= self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::AND_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     self.regs[Cpu::REG_A] &= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
 
                 Cpu::EOR_IMMEDIATE => {
                     self.regs[Cpu::REG_A] ^= self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_A] ^= self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::EOR_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     self.regs[Cpu::REG_A] ^= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_IMMEDIATE => {
                     self.regs[Cpu::REG_A] |= self.read_pc();
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_ZERO => {
                     let addr = self.read_pc();
                     self.regs[Cpu::REG_A] |= self.read8(addr as u16);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ORA_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     self.regs[Cpu::REG_A] |= self.read8(addr);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::BIT_TEST_ZERO => {
                     let addr = self.read_pc();
@@ -803,96 +821,96 @@ impl<'a> Cpu<'a> {
                 Cpu::ADC_IMMEDIATE => {
                     let val = self.read_pc();
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ZERO => {
                     let addr = self.read_pc();
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     let val = self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_IMMEDIATE => {
                     let val = 255 - self.read_pc();
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ZERO => {
                     let addr = self.read_pc();
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
                     let val = 255 - self.read8(addr as u16);
                     self.regs[Cpu::REG_A] = self.adc(val);
-                    self.set_load_instructions_flags(Cpu::REG_A);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::CMP_IMMEDIATE => {
                     let val = self.read_pc();
@@ -960,6 +978,78 @@ impl<'a> Cpu<'a> {
                     let addr = self.fetch_absolute_addr();
                     let val = self.read8(addr as u16);
                     self.set_compare_flags(Cpu::REG_Y, val);
+                }
+                Cpu::INC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sum(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::INC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sum(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::INC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sum(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::INC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sum(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::INX_IMPLIED => {
+                    self.regs[Cpu::REG_X] = self.sum(self.regs[Cpu::REG_X], 1);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
+                }
+                Cpu::INY_IMPLIED => {
+                    self.regs[Cpu::REG_Y] = self.sum(self.regs[Cpu::REG_Y], 1);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
+                }
+                Cpu::DEC_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sub(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::DEC_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sub(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::DEC_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sub(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::DEC_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let inc_val = self.sub(val, 1);
+                    self.write8(addr as u16, inc_val);
+                    self.set_zero_negative_flags(inc_val);
+                }
+                Cpu::DEX_IMPLIED => {
+                    self.regs[Cpu::REG_X] = self.sub(self.regs[Cpu::REG_X], 1);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_X]);
+                }
+                Cpu::DEY_IMPLIED => {
+                    self.regs[Cpu::REG_Y] = self.sub(self.regs[Cpu::REG_Y], 1);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
                 }
                 _ => println!("Invalid OP"),
             }
