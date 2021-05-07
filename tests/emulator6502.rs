@@ -344,6 +344,12 @@ fn mem_trans_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16) ->
 // DEY
 #[case::dey_implied1(mem_implied(Cpu::DEY_IMPLIED), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_Y, 0, 10, 0)]
 #[case::dey_implied2(mem_implied(Cpu::DEY_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_Y, 0x1, 10, 0)]
+// ASL
+#[case::asl_implied1(mem_implied(Cpu::ASL_IMPLIED), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0xFF, 10, 0)]
+#[case::asl_implied1(mem_implied(Cpu::ASL_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x80, 10, 0)]
+// LSR
+#[case::lsr_implied1(mem_implied(Cpu::LSR_IMPLIED), 0x1, 0, Cpu::REG_A, 0x2, 10, 0)]
+#[case::lsr_implied1(mem_implied(Cpu::LSR_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x1, 10, 0)]
 fn load_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
@@ -413,6 +419,24 @@ fn load_tests(
 #[case::dec_abs2(mem_abs_read_store(Cpu::DEC_ABSOLUTE, 0x12AA, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x12, 10, 0)]
 #[case::dec_abs_x1(mem_abs_index_read_store(Cpu::DEC_ABSOLUTE_X, 0x1225, 0xF, 0), 0xFF, Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
 #[case::dec_abs_x2(mem_abs_index_read_store(Cpu::DEC_ABSOLUTE_X, 0x12AA, 0xBB, 0x1), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
+// ASL
+#[case::asl_zero1(mem_zero_read_store(Cpu::ASL_ZERO, 0xCA, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::asl_zero2(mem_zero_read_store(Cpu::ASL_ZERO, 0xCB, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::asl_zero_x1(mem_zero_index_read_store(Cpu::ASL_ZERO_X, 0x80, 0x0F, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::asl_zero_x2(mem_zero_index_read_store(Cpu::ASL_ZERO_X, 0x80, 0xFF, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::asl_abs1(mem_abs_read_store(Cpu::ASL_ABSOLUTE, 0x1225, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0xFE, 10, 0)]
+#[case::asl_abs2(mem_abs_read_store(Cpu::ASL_ABSOLUTE, 0x12AA, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x12, 10, 0)]
+#[case::asl_abs_x1(mem_abs_index_read_store(Cpu::ASL_ABSOLUTE_X, 0x1225, 0xF, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
+#[case::asl_abs_x2(mem_abs_index_read_store(Cpu::ASL_ABSOLUTE_X, 0x12AA, 0xBB, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
+// LSR
+#[case::lsr_zero1(mem_zero_read_store(Cpu::LSR_ZERO, 0xCA, 0x2), 0x1, 0, Cpu::REG_A, 0, 10, 0)]
+#[case::lsr_zero2(mem_zero_read_store(Cpu::LSR_ZERO, 0xCB, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::lsr_zero_x1(mem_zero_index_read_store(Cpu::LSR_ZERO_X, 0x80, 0x0F, 0x2), 0x1, 0, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::lsr_zero_x2(mem_zero_index_read_store(Cpu::LSR_ZERO_X, 0x80, 0xFF, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::lsr_abs1(mem_abs_read_store(Cpu::LSR_ABSOLUTE, 0x1225, 0x2), 0x1, 0, Cpu::REG_A, 0xFE, 10, 0)]
+#[case::lsr_abs2(mem_abs_read_store(Cpu::LSR_ABSOLUTE, 0x12AA, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x12, 10, 0)]
+#[case::lsr_abs_x1(mem_abs_index_read_store(Cpu::LSR_ABSOLUTE_X, 0x1225, 0xF, 0x2), 0x1, 0, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
+#[case::lsr_abs_x2(mem_abs_index_read_store(Cpu::LSR_ABSOLUTE_X, 0x12AA, 0xBB, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
 fn store_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
