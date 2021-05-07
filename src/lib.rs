@@ -314,6 +314,30 @@ impl<'a> Cpu<'a> {
     pub const DEX_IMPLIED: u8 = 0xCA;
     // dey
     pub const DEY_IMPLIED: u8 = 0x88;
+    // asl
+    pub const ASL_IMPLIED: u8 = 0x0A;
+    pub const ASL_ZERO: u8 = 0x06;
+    pub const ASL_ZERO_X: u8 = 0x16;
+    pub const ASL_ABSOLUTE: u8 = 0x0E;
+    pub const ASL_ABSOLUTE_X: u8 = 0x1E;
+    // lsr
+    pub const LSR_IMPLIED: u8 = 0x4A;
+    pub const LSR_ZERO: u8 = 0x46;
+    pub const LSR_ZERO_X: u8 = 0x56;
+    pub const LSR_ABSOLUTE: u8 = 0x4E;
+    pub const LSR_ABSOLUTE_X: u8 = 0x5E;
+    // rol
+    pub const ROL_IMPLIED: u8 = 0x2A;
+    pub const ROL_ZERO: u8 = 0x26;
+    pub const ROL_ZERO_X: u8 = 0x36;
+    pub const ROL_ABSOLUTE: u8 = 0x2E;
+    pub const ROL_ABSOLUTE_X: u8 = 0x3E;
+    // ror
+    pub const ROR_IMPLIED: u8 = 0x6A;
+    pub const ROR_ZERO: u8 = 0x66;
+    pub const ROR_ZERO_X: u8 = 0x76;
+    pub const ROR_ABSOLUTE: u8 = 0x6E;
+    pub const ROR_ABSOLUTE_X: u8 = 0x7E;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -387,6 +411,20 @@ impl<'a> Cpu<'a> {
     fn sub(&mut self, val1: u8, val2: u8) -> u8 {
         self.cycles_run += 1;
         val1.overflowing_sub(val2).0
+    }
+
+    fn shift_left(&mut self, val: u8) -> u8 {
+        self.cycles_run += 1;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] |= val >> 7;
+        val << 1
+    }
+
+    fn shift_right(&mut self, val: u8) -> u8 {
+        self.cycles_run += 1;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] |= val & 0x1;
+        val >> 1
     }
 
     fn adc(&mut self, val: u8) -> u8 {
@@ -1050,6 +1088,70 @@ impl<'a> Cpu<'a> {
                 Cpu::DEY_IMPLIED => {
                     self.regs[Cpu::REG_Y] = self.sub(self.regs[Cpu::REG_Y], 1);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_Y]);
+                }
+                Cpu::ASL_IMPLIED => {
+                    self.regs[Cpu::REG_A] = self.shift_left(self.regs[Cpu::REG_A]);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
+                }
+                Cpu::ASL_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ASL_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ASL_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ASL_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::LSR_IMPLIED => {
+                    self.regs[Cpu::REG_A] = self.shift_right(self.regs[Cpu::REG_A]);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
+                }
+                Cpu::LSR_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::LSR_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::LSR_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::LSR_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.shift_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
                 }
                 _ => println!("Invalid OP"),
             }
