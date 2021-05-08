@@ -346,10 +346,16 @@ fn mem_trans_store(#[default = 0] instrunction: u8, #[default = 0] addr: u16) ->
 #[case::dey_implied2(mem_implied(Cpu::DEY_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_Y, 0x1, 10, 0)]
 // ASL
 #[case::asl_implied1(mem_implied(Cpu::ASL_IMPLIED), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0xFF, 10, 0)]
-#[case::asl_implied1(mem_implied(Cpu::ASL_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x80, 10, 0)]
+#[case::asl_implied2(mem_implied(Cpu::ASL_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x80, 10, 0)]
 // LSR
 #[case::lsr_implied1(mem_implied(Cpu::LSR_IMPLIED), 0x1, 0, Cpu::REG_A, 0x2, 10, 0)]
-#[case::lsr_implied1(mem_implied(Cpu::LSR_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x1, 10, 0)]
+#[case::lsr_implied2(mem_implied(Cpu::LSR_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x1, 10, 0)]
+// ROL
+#[case::rol_implied1(mem_implied(Cpu::ROL_IMPLIED), 0xFF, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0xFF, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::rol_implied2(mem_implied(Cpu::ROL_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x80, 10, 0)]
+// ROR
+#[case::ror_implied1(mem_implied(Cpu::ROR_IMPLIED), 0x80, Cpu::FLAG_CARRY | Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0x1, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::ror_implied2(mem_implied(Cpu::ROR_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x1, 10, 0)]
 fn load_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
@@ -366,10 +372,10 @@ fn load_tests(
         cpu.regs[aux_register] = aux_register_init_val;
     }
     cpu.process(op.cycles);
-    assert_eq!(RESET_EXEC_ADDRESS + op.bytes, cpu.pc);
-    assert_eq!(expected_result, cpu.regs[to_register]);
-    assert_eq!(expected_stat, cpu.regs[Cpu::REG_STAT]);
-    assert_eq!(op.cycles, cpu.cycles_run);
+    assert_eq!(RESET_EXEC_ADDRESS + op.bytes, cpu.pc, "PC not expected");
+    assert_eq!(expected_result, cpu.regs[to_register], "Result not expected");
+    assert_eq!(expected_stat, cpu.regs[Cpu::REG_STAT], "Stat reg expected");
+    assert_eq!(op.cycles, cpu.cycles_run, "Cycles run not expected");
 }
 
 #[rstest]
@@ -437,6 +443,24 @@ fn load_tests(
 #[case::lsr_abs2(mem_abs_read_store(Cpu::LSR_ABSOLUTE, 0x12AA, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x12, 10, 0)]
 #[case::lsr_abs_x1(mem_abs_index_read_store(Cpu::LSR_ABSOLUTE_X, 0x1225, 0xF, 0x2), 0x1, 0, Cpu::REG_A, 0xAB, Cpu::REG_X, 0x0F)]
 #[case::lsr_abs_x2(mem_abs_index_read_store(Cpu::LSR_ABSOLUTE_X, 0x12AA, 0xBB, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x11, Cpu::REG_X, 0xBB)]
+// ROL
+#[case::rol_zero1(mem_zero_read_store(Cpu::ROL_ZERO, 0xCA, 0xFF), 0xFF, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::rol_zero2(mem_zero_read_store(Cpu::ROL_ZERO, 0xCB, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::rol_zero_x1(mem_zero_index_read_store(Cpu::ROL_ZERO_X, 0x80, 0x0F, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::rol_zero_x2(mem_zero_index_read_store(Cpu::ROL_ZERO_X, 0x80, 0xFF, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::rol_abs1(mem_abs_read_store(Cpu::ROL_ABSOLUTE, 0x1225, 0xFF), 0xFF, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::rol_abs2(mem_abs_read_store(Cpu::ROL_ABSOLUTE, 0x12AA, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::rol_abs_x1(mem_abs_index_read_store(Cpu::ROL_ABSOLUTE_X, 0x1225, 0xF, 0xFF), 0xFE, Cpu::FLAG_NEGATIVE | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::rol_abs_x2(mem_abs_index_read_store(Cpu::ROL_ABSOLUTE_X, 0x12AA, 0xBB, 0x80), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xBB)]
+// ROR
+#[case::ror_zero1(mem_zero_read_store(Cpu::ROR_ZERO, 0xCA, 0x1), 0x80, Cpu::FLAG_CARRY | Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::ror_zero2(mem_zero_read_store(Cpu::ROR_ZERO, 0xCB, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::ror_zero_x1(mem_zero_index_read_store(Cpu::ROR_ZERO_X, 0x80, 0x0F, 0xFF), 0x7F, Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::ror_zero_x2(mem_zero_index_read_store(Cpu::ROR_ZERO_X, 0x80, 0xFF, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xFF)]
+#[case::ror_abs1(mem_abs_read_store(Cpu::ROR_ABSOLUTE, 0x1225, 0x1), 0x80, Cpu::FLAG_CARRY | Cpu::FLAG_NEGATIVE, Cpu::REG_A, 0, Cpu::REG_STAT, Cpu::FLAG_CARRY)]
+#[case::ror_abs2(mem_abs_read_store(Cpu::ROR_ABSOLUTE, 0x12AA, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, 10, 0)]
+#[case::ror_abs_x1(mem_abs_index_read_store(Cpu::ROR_ABSOLUTE_X, 0x1225, 0xF, 0xFF), 0x7F, Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0x0F)]
+#[case::ror_abs_x2(mem_abs_index_read_store(Cpu::ROR_ABSOLUTE_X, 0x12AA, 0xBB, 0x1), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_X, 0xBB)]
 fn store_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,

@@ -6,7 +6,7 @@
 // https://www.masswerk.at/6502/6502_instruction_set.html
 // http://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 
-// No decimal mode
+// No decimal mode here
 
 struct OpImm {
     reg_index: usize,
@@ -425,6 +425,22 @@ impl<'a> Cpu<'a> {
         self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
         self.regs[Cpu::REG_STAT] |= val & 0x1;
         val >> 1
+    }
+
+    fn rotate_left(&mut self, val: u8) -> u8 {
+        self.cycles_run += 1;
+        let old_carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] |= val >> 7;
+        (val << 1) | old_carry
+    }
+
+    fn rotate_right(&mut self, val: u8) -> u8 {
+        self.cycles_run += 1;
+        let old_carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] |= val & 0x1;
+        (val >> 1) | (old_carry << 7)
     }
 
     fn adc(&mut self, val: u8) -> u8 {
@@ -1150,6 +1166,70 @@ impl<'a> Cpu<'a> {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
                     let val = self.read8(addr as u16);
                     let shift_val = self.shift_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROL_IMPLIED => {
+                    self.regs[Cpu::REG_A] = self.rotate_left(self.regs[Cpu::REG_A]);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
+                }
+                Cpu::ROL_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROL_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROL_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROL_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_left(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROR_IMPLIED => {
+                    self.regs[Cpu::REG_A] = self.rotate_right(self.regs[Cpu::REG_A]);
+                    self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
+                }
+                Cpu::ROR_ZERO => {
+                    let addr = self.read_pc();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROR_ZERO_X => {
+                    let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROR_ABSOLUTE => {
+                    let addr = self.fetch_absolute_addr();
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_right(val);
+                    self.write8(addr as u16, shift_val);
+                    self.set_zero_negative_flags(shift_val);
+                }
+                Cpu::ROR_ABSOLUTE_X => {
+                    let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
+                    let val = self.read8(addr as u16);
+                    let shift_val = self.rotate_right(val);
                     self.write8(addr as u16, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
