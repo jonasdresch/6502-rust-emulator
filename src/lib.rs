@@ -338,6 +338,15 @@ impl<'a> Cpu<'a> {
     pub const ROR_ZERO_X: u8 = 0x76;
     pub const ROR_ABSOLUTE: u8 = 0x6E;
     pub const ROR_ABSOLUTE_X: u8 = 0x7E;
+    // branches
+    pub const BCC_RELATIVE: u8 = 0x90;
+    pub const BCS_RELATIVE: u8 = 0xB0;
+    pub const BEQ_RELATIVE: u8 = 0xF0;
+    pub const BMI_RELATIVE: u8 = 0x30;
+    pub const BNE_RELATIVE: u8 = 0xD0;
+    pub const BPL_RELATIVE: u8 = 0x10;
+    pub const BVC_RELATIVE: u8 = 0x50;
+    pub const BVS_RELATIVE: u8 = 0x70;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -441,6 +450,22 @@ impl<'a> Cpu<'a> {
         self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
         self.regs[Cpu::REG_STAT] |= val & 0x1;
         (val >> 1) | (old_carry << 7)
+    }
+
+    fn branch(&mut self, offset: i8) {
+        self.cycles_run += 1;
+        let old_pc = self.pc;
+        let new_pc = self.pc as i32 + offset as i32;
+        // The assembler should not let this happen
+        assert!(new_pc <= 0xFFFF && new_pc > 0, "Trying to branch beyond memory limits");
+        self.pc = new_pc as u16;
+        println!("{:x}, {:x}, {}", self.pc, old_pc, offset);
+        // if page crossed
+        // the MSB is the page. we have 256 pages of 256 bytes each
+        let page_changed = (self.pc & 0xFF00) != (old_pc & 0xFF00);
+        if page_changed {
+            self.cycles_run += 1;
+        }
     }
 
     fn adc(&mut self, val: u8) -> u8 {
@@ -1233,6 +1258,54 @@ impl<'a> Cpu<'a> {
                     self.write8(addr as u16, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
+                Cpu::BCC_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY == 0 {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BCS_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY == Cpu::FLAG_CARRY {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BEQ_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_ZERO == Cpu::FLAG_ZERO {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BMI_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_NEGATIVE == Cpu::FLAG_NEGATIVE {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BNE_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_ZERO == 0 {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BPL_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_NEGATIVE == 0 {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BVC_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_OVERFLOW == 0 {
+                        self.branch(offset as i8);
+                    }
+                }
+                Cpu::BVS_RELATIVE => {
+                    let offset = self.read_pc();
+                    if self.regs[Cpu::REG_STAT] & Cpu::FLAG_OVERFLOW == Cpu::FLAG_OVERFLOW {
+                        self.branch(offset as i8);
+                    }
+                }
                 _ => println!("Invalid OP"),
             }
             if self.cycles_run - init_cycles >= cycles {
@@ -1283,8 +1356,12 @@ impl Mem {
     }
 
     pub fn load_programm(&mut self, programm: &[u8]) {
+        self.load_programm_at(RESET_EXEC_ADDRESS, programm);
+    }
+
+    pub fn load_programm_at(&mut self, address: u16, programm: &[u8]) {
         for (i, elem) in programm.iter().enumerate() {
-            self.write8(RESET_EXEC_ADDRESS as usize + i, *elem);
+            self.write8(address as usize + i, *elem);
         }
     }
 
