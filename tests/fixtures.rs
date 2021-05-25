@@ -2,10 +2,10 @@ use emulator6502::Mem;
 use rstest::fixture;
 
 pub struct Operation {
-    pub cycles: u32,
-    pub bytes: i32,
-    pub mem: Mem,
-    pub addr: u16,
+    pub cycles: u32, // Cycles to execute
+    pub bytes: i32,  // Bytes used
+    pub mem: Mem,    // Memory instance
+    pub addr: u16,   // Absolute/indexed operations calculated address
 }
 
 #[fixture]
