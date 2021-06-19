@@ -348,6 +348,23 @@ impl<'a> Cpu<'a> {
     pub const BPL_RELATIVE: u8 = 0x10;
     pub const BVC_RELATIVE: u8 = 0x50;
     pub const BVS_RELATIVE: u8 = 0x70;
+    // jumps
+    pub const JMP_ABSOLUTE: u8 = 0x4C;
+    pub const JMP_INDIRECT: u8 = 0x6C;
+    pub const JSR_ABSOLUTE: u8 = 0x20;
+    pub const RTS_IMPLIED: u8 = 0x60;
+    // clear
+    pub const CLC_IMPLIED: u8 = 0x18;
+    pub const CLD_IMPLIED: u8 = 0xD8;
+    pub const CLI_IMPLIED: u8 = 0x58;
+    pub const CLV_IMPLIED: u8 = 0xB8;
+    pub const SEC_IMPLIED: u8 = 0x38;
+    pub const SED_IMPLIED: u8 = 0xF8;
+    pub const SEI_IMPLIED: u8 = 0x78;
+    // system
+    pub const BRK_IMPLIED: u8 = 0x00;
+    pub const NOP_IMPLIED: u8 = 0xEA;
+    pub const RTI_IMPLIED: u8 = 0x40;
 
     // status flags
     pub const FLAG_CARRY: u8 = 0b0000_0001;
@@ -364,6 +381,9 @@ impl<'a> Cpu<'a> {
     pub const REG_X: usize = 2;
     pub const REG_Y: usize = 3;
     pub const REG_STAT: usize = 4;
+
+    pub const IRQ_INTERRUPT_VECTOR_ADDR: u16 = 0xFFFE;
+    pub const NMI_INTERRUPT_VECTOR_ADDR: u16 = 0xFFFA;
 
     pub fn new(mem: &'a mut Mem) -> Self {
         Cpu { pc: 0, regs: [0; 5], cycles_run: 0, mem }
@@ -397,13 +417,24 @@ impl<'a> Cpu<'a> {
 
     fn write_to_stack(&mut self, val: u8) {
         self.write8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR, val);
-        self.regs[Cpu::REG_SP] = self.sub(self.regs[Cpu::REG_SP], 1);
+        self.regs[Cpu::REG_SP] = self.regs[Cpu::REG_SP].overflowing_sub(1).0;
+    }
+
+    fn write_to_stack_16(&mut self, val: u16) {
+        self.write_to_stack((val >> 8) as u8);
+        self.write_to_stack(val as u8);
     }
 
     fn read_from_stack(&mut self) -> u8 {
-        self.regs[Cpu::REG_SP] = self.sum(self.regs[Cpu::REG_SP], 1);
-        self.cycles_run += 1;
+        self.regs[Cpu::REG_SP] += 1;
         self.read8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR)
+    }
+
+    fn read_from_stack_16(&mut self) -> u16 {
+        self.regs[Cpu::REG_SP] += 1;
+        let val = self.read16(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR);
+        self.regs[Cpu::REG_SP] += 1;
+        val
     }
 
     fn read_pc(&mut self) -> u8 {
@@ -469,48 +500,14 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn adc(&mut self, val: u8) -> u8 {
-        let carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
-        let sum = self.regs[Cpu::REG_A] as u16 + val as u16 + carry as u16;
-        if sum > 255 {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
-        } else {
-            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
-        }
-        let of = (self.regs[Cpu::REG_A] ^ sum as u8) & (val ^ sum as u8) & 0x80;
-        if of > 0 {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_OVERFLOW;
-        } else {
-            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_OVERFLOW;
-        }
-        sum as u8
+    fn set_status_flag(&mut self, flag: u8) {
+        self.regs[Cpu::REG_STAT] |= flag;
+        self.cycles_run += 1;
     }
 
-    fn set_zero_negative_flags(&mut self, val: u8) {
-        if val == 0 {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
-        } else {
-            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
-        }
-        if (val & Cpu::FLAG_NEGATIVE) > 0 {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_NEGATIVE;
-        } else {
-            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
-        }
-    }
-
-    fn set_compare_flags(&mut self, reg: usize, val: u8) {
-        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
-        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
-        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
-        if self.regs[reg] >= val {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
-        }
-        if self.regs[reg] == val {
-            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
-        }
-        let sub_result = self.regs[reg].overflowing_sub(val).0;
-        self.regs[Cpu::REG_STAT] |= sub_result & Cpu::FLAG_NEGATIVE;
+    fn clear_status_flag(&mut self, flag: u8) {
+        self.regs[Cpu::REG_STAT] &= !flag;
+        self.cycles_run += 1;
     }
 
     // Methods for the addressing modes
@@ -555,6 +552,52 @@ impl<'a> Cpu<'a> {
         }
         addr += (high as u16) << 8;
         addr
+    }
+
+    // End of methods that cost some cycles to run.
+    
+    fn adc(&mut self, val: u8) -> u8 {
+        let carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
+        let sum = self.regs[Cpu::REG_A] as u16 + val as u16 + carry as u16;
+        if sum > 255 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
+        } else {
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        }
+        let of = (self.regs[Cpu::REG_A] ^ sum as u8) & (val ^ sum as u8) & 0x80;
+        if of > 0 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_OVERFLOW;
+        } else {
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_OVERFLOW;
+        }
+        sum as u8
+    }
+
+    fn set_zero_negative_flags(&mut self, val: u8) {
+        if val == 0 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
+        } else {
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
+        }
+        if (val & Cpu::FLAG_NEGATIVE) > 0 {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_NEGATIVE;
+        } else {
+            self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
+        }
+    }
+
+    fn set_compare_flags(&mut self, reg: usize, val: u8) {
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_CARRY;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_ZERO;
+        self.regs[Cpu::REG_STAT] &= !Cpu::FLAG_NEGATIVE;
+        if self.regs[reg] >= val {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_CARRY;
+        }
+        if self.regs[reg] == val {
+            self.regs[Cpu::REG_STAT] |= Cpu::FLAG_ZERO;
+        }
+        let sub_result = self.regs[reg].overflowing_sub(val).0;
+        self.regs[Cpu::REG_STAT] |= sub_result & Cpu::FLAG_NEGATIVE;
     }
 
     pub fn process2(&mut self, cycles: u32) {
@@ -745,16 +788,20 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::PUSH_A_TO_SP => {
                     self.write_to_stack(self.regs[Cpu::REG_A]);
+                    self.cycles_run += 1;
                 }
                 Cpu::PUSH_STAT_TO_SP => {
                     self.write_to_stack(self.regs[Cpu::REG_STAT]);
+                    self.cycles_run += 1;
                 }
                 Cpu::PULL_SP_TO_A => {
                     self.regs[Cpu::REG_A] = self.read_from_stack();
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
+                    self.cycles_run += 2;
                 }
                 Cpu::PULL_SP_TO_STAT => {
                     self.regs[Cpu::REG_STAT] = self.read_from_stack();
+                    self.cycles_run += 2;
                 }
                 Cpu::AND_IMMEDIATE => {
                     self.regs[Cpu::REG_A] &= self.read_pc();
@@ -1306,6 +1353,42 @@ impl<'a> Cpu<'a> {
                     if self.regs[Cpu::REG_STAT] & Cpu::FLAG_OVERFLOW == Cpu::FLAG_OVERFLOW {
                         self.branch(offset as i8);
                     }
+                }
+                Cpu::CLC_IMPLIED => {
+                    self.clear_status_flag(Cpu::FLAG_CARRY);
+                }
+                Cpu::CLD_IMPLIED => {
+                    self.clear_status_flag(Cpu::FLAG_DECIMAL);
+                }
+                Cpu::CLI_IMPLIED => {
+                    self.clear_status_flag(Cpu::FLAG_INTERRUPT);
+                }
+                Cpu::CLV_IMPLIED => {
+                    self.clear_status_flag(Cpu::FLAG_OVERFLOW);
+                }
+                Cpu::SEC_IMPLIED => {
+                    self.set_status_flag(Cpu::FLAG_CARRY);
+                }
+                Cpu::SED_IMPLIED => {
+                    self.set_status_flag(Cpu::FLAG_DECIMAL);
+                }
+                Cpu::SEI_IMPLIED => {
+                    self.set_status_flag(Cpu::FLAG_INTERRUPT);
+                }
+                Cpu::NOP_IMPLIED => {
+                    self.cycles_run += 1;
+                }
+                // https://www.pagetable.com/?p=410
+                Cpu::BRK_IMPLIED => {
+                    self.write_to_stack_16(self.pc);
+                    self.write_to_stack(self.regs[Cpu::REG_STAT] | Cpu::FLAG_BREAK);
+                    self.pc = self.read16(Cpu::IRQ_INTERRUPT_VECTOR_ADDR);
+                    self.cycles_run += 1;
+                }
+                Cpu::RTI_IMPLIED => {
+                    self.regs[Cpu::REG_STAT] = self.read_from_stack();
+                    self.pc = self.read_from_stack_16();
+                    self.cycles_run += 2;
                 }
                 _ => println!("Invalid OP"),
             }
