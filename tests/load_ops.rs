@@ -5,6 +5,8 @@ mod fixtures;
 use fixtures::*;
 
 const NOT_NEG_ZERO_FLAG: u8 = Cpu::FLAG_CARRY | Cpu::FLAG_OVERFLOW | Cpu::FLAG_BREAK | Cpu::FLAG_DECIMAL | Cpu::FLAG_INTERRUPT;
+const ALL_FLAGS: u8 = Cpu::FLAG_CARRY | Cpu::FLAG_NEGATIVE | Cpu::FLAG_ZERO | Cpu::FLAG_OVERFLOW | Cpu::FLAG_BREAK | Cpu::FLAG_DECIMAL | Cpu::FLAG_INTERRUPT;
+
 
 // TODO for all
 // test if status flags are not zeroed
@@ -265,6 +267,22 @@ const NOT_NEG_ZERO_FLAG: u8 = Cpu::FLAG_CARRY | Cpu::FLAG_OVERFLOW | Cpu::FLAG_B
 #[case::ror_set_carry_and_zero(mem_implied(Cpu::ROR_IMPLIED), 0, Cpu::FLAG_ZERO | Cpu::FLAG_CARRY, Cpu::REG_A, 0x1, 10, 0)]
 #[case::ror_set_zero(mem_implied(Cpu::ROR_IMPLIED), 0, Cpu::FLAG_ZERO, Cpu::REG_A, 0, 10, 0)]
 #[case::ror_dont_set_any_flags(mem_implied(Cpu::ROR_IMPLIED), 0x20, 0, Cpu::REG_A, 0x40, 10, 0)]
+// CLC
+#[case::clc_clear_only_carry(mem_implied(Cpu::CLC_IMPLIED), 0, ALL_FLAGS & !Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_STAT, ALL_FLAGS)]
+// CLD
+#[case::cld_clear_only_decimal(mem_implied(Cpu::CLD_IMPLIED), 0, ALL_FLAGS & !Cpu::FLAG_DECIMAL, Cpu::REG_A, 0, Cpu::REG_STAT, ALL_FLAGS)]
+// CLI
+#[case::cli_clear_only_interrupt(mem_implied(Cpu::CLI_IMPLIED), 0, ALL_FLAGS & !Cpu::FLAG_INTERRUPT, Cpu::REG_A, 0, Cpu::REG_STAT, ALL_FLAGS)]
+// CLV
+#[case::clv_clear_only_overflow(mem_implied(Cpu::CLV_IMPLIED), 0, ALL_FLAGS & !Cpu::FLAG_OVERFLOW, Cpu::REG_A, 0, Cpu::REG_STAT, ALL_FLAGS)]
+// SEC
+#[case::sec_set_only_carry(mem_implied(Cpu::SEC_IMPLIED), 0, Cpu::FLAG_CARRY, Cpu::REG_A, 0, Cpu::REG_STAT, 0)]
+// SED
+#[case::sed_set_only_decimal(mem_implied(Cpu::SED_IMPLIED), 0, Cpu::FLAG_DECIMAL, Cpu::REG_A, 0, Cpu::REG_STAT, 0)]
+// SEI
+#[case::sei_set_only_interrupt(mem_implied(Cpu::SEI_IMPLIED), 0, Cpu::FLAG_INTERRUPT, Cpu::REG_A, 0, Cpu::REG_STAT, 0)]
+// NOP
+#[case::nop(mem_implied(Cpu::NOP_IMPLIED), 0, 0, Cpu::REG_A, 0, Cpu::REG_STAT, 0)]
 fn load_tests(
     #[case] mut op: Operation,
     #[case] expected_result: u8,
