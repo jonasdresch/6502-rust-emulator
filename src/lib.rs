@@ -491,7 +491,7 @@ impl<'a> Cpu<'a> {
         // The assembler should not let this happen
         assert!(new_pc <= 0xFFFF && new_pc > 0, "Trying to branch beyond memory limits");
         self.pc = new_pc as u16;
-        println!("{:x}, {:x}, {}", self.pc, old_pc, offset);
+        // println!("{:x}, {:x}, {}", self.pc, old_pc, offset);
         // if page crossed
         // the MSB is the page. we have 256 pages of 256 bytes each
         let page_changed = (self.pc & 0xFF00) != (old_pc & 0xFF00);
@@ -555,7 +555,7 @@ impl<'a> Cpu<'a> {
     }
 
     // End of methods that cost some cycles to run.
-    
+
     fn adc(&mut self, val: u8) -> u8 {
         let carry = self.regs[Cpu::REG_STAT] & Cpu::FLAG_CARRY;
         let sum = self.regs[Cpu::REG_A] as u16 + val as u16 + carry as u16;
@@ -615,6 +615,8 @@ impl<'a> Cpu<'a> {
 
     pub fn process(&mut self, cycles: u32) {
         let init_cycles = self.cycles_run;
+        // TODO: For testing only
+        println!("PC {:X}", self.pc);
         loop {
             let instruction = self.read_pc();
             match instruction {
@@ -1390,9 +1392,9 @@ impl<'a> Cpu<'a> {
                     self.pc = self.read_from_stack_16();
                     self.cycles_run += 2;
                 }
-                _ => println!("Invalid OP"),
+                _ => println!("Invalid OP: {:X}", instruction),
             }
-            if self.cycles_run - init_cycles >= cycles {
+            if cycles > 0 && self.cycles_run - init_cycles >= cycles {
                 break;
             }
         }
@@ -1429,7 +1431,7 @@ impl Mem {
     }
 
     pub fn write8(&mut self, address: usize, value: u8) {
-        assert!(address < MEM_SIZE, "memory access out ouf bounds");
+        assert!(address < MEM_SIZE, "memory access out ouf bounds at {:X}", address);
         self.mem[address] = value;
     }
 
@@ -1444,6 +1446,12 @@ impl Mem {
     }
 
     pub fn load_programm_at(&mut self, address: u16, programm: &[u8]) {
+        for (i, elem) in programm.iter().enumerate() {
+            self.write8(address as usize + i, *elem);
+        }
+    }
+
+    pub fn load_programm_at_from_vec(&mut self, address: u16, programm: Vec<u8>) {
         for (i, elem) in programm.iter().enumerate() {
             self.write8(address as usize + i, *elem);
         }
