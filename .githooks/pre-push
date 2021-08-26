@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cargo --version
+cargo fmt -- --check
+cargo clippy --all-targets --all-features -- -D warnings
