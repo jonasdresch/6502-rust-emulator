@@ -7,7 +7,6 @@ use fixtures::*;
 const NOT_NEG_ZERO_FLAG: u8 = Cpu::FLAG_CARRY | Cpu::FLAG_OVERFLOW | Cpu::FLAG_BREAK | Cpu::FLAG_DECIMAL | Cpu::FLAG_INTERRUPT;
 const ALL_FLAGS: u8 = Cpu::FLAG_CARRY | Cpu::FLAG_NEGATIVE | Cpu::FLAG_ZERO | Cpu::FLAG_OVERFLOW | Cpu::FLAG_BREAK | Cpu::FLAG_DECIMAL | Cpu::FLAG_INTERRUPT;
 
-
 // TODO for all
 // test if status flags are not zeroed
 // test if status are not affected at all for specific results

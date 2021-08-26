@@ -7,19 +7,35 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'emulator6502'",
+            "name": "Debug branch OP tests in library 'emulator6502'",
             "cargo": {
                 "args": [
                     "test",
-                    "--lib",
-                    "--package=emulator6502"
+                    "--no-run",
                 ],
                 "filter": {
-                    "name": "emulator6502",
-                    "kind": "lib"
+                    "name": "branch_ops",
+                    "kind": "test",                 
                 }
             },
             "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug full programm test in library 'emulator6502'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                ],
+                "filter": {
+                    "name": "full_programm",
+                    "kind": "test",                 
+                }
+            },
+            "args": ["--nocapture", "--ignored"],
             "cwd": "${workspaceFolder}"
         }
     ]
