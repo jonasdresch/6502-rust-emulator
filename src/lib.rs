@@ -426,15 +426,14 @@ impl<'a> Cpu<'a> {
     }
 
     fn read_from_stack(&mut self) -> u8 {
-        self.regs[Cpu::REG_SP] += 1;
+        self.regs[Cpu::REG_SP] = self.regs[Cpu::REG_SP].wrapping_add(1);
         self.read8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR)
     }
 
     fn read_from_stack_16(&mut self) -> u16 {
-        self.regs[Cpu::REG_SP] += 1;
-        let val = self.read16(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR);
-        self.regs[Cpu::REG_SP] += 1;
-        val
+        let low = self.read_from_stack() as u16;
+        let high = self.read_from_stack() as u16;
+        (high << 8) | low
     }
 
     fn read_pc(&mut self) -> u8 {
@@ -1379,6 +1378,27 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::NOP_IMPLIED => {
                     self.cycles_run += 1;
+                }
+                Cpu::JMP_ABSOLUTE => {
+                    self.pc = self.fetch_absolute_addr();
+                }
+                Cpu::JMP_INDIRECT => {
+                    let ptr = self.fetch_absolute_addr();
+                    let low = self.read8(ptr) as u16;
+                    let high_addr = (ptr & 0xFF00) | ((ptr + 1) & 0x00FF);
+                    let high = self.read8(high_addr) as u16;
+                    self.pc = (high << 8) | low;
+                }
+                Cpu::JSR_ABSOLUTE => {
+                    let target = self.fetch_absolute_addr();
+                    self.write_to_stack_16(self.pc - 1);
+                    self.pc = target;
+                    self.cycles_run += 1;
+                }
+                Cpu::RTS_IMPLIED => {
+                    let return_address = self.read_from_stack_16();
+                    self.pc = return_address.wrapping_add(1);
+                    self.cycles_run += 3;
                 }
                 // https://www.pagetable.com/?p=410
                 Cpu::BRK_IMPLIED => {

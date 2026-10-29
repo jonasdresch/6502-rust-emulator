@@ -9,7 +9,6 @@ use std::fs;
 /// As it stays in a loop even on success and must be run with a
 /// debugger, do not run it in normal testing mode
 #[test]
-#[ignore]
 fn test_full_programm_all_opcodes() {
     let mut mem = Mem::new();
     mem.reset();
@@ -20,5 +19,19 @@ fn test_full_programm_all_opcodes() {
     cpu.reset();
     // The PC must start at 0x400
     cpu.pc = 0x400;
-    cpu.process(0);
+
+    let mut prev_pc = cpu.pc;
+    let mut same_pc_count = 0;
+    while cpu.cycles_run < 100_000_000 {
+        cpu.process(1000);
+        if cpu.pc == prev_pc {
+            same_pc_count += 1;
+            if same_pc_count > 10 {
+                break;
+            }
+        } else {
+            same_pc_count = 0;
+            prev_pc = cpu.pc;
+        }
+    }
 }

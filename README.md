@@ -39,7 +39,7 @@ A 6502 CPU emulator written in Rust to learn about emulators and systems program
 | | SEC, SED, SEI | Implied | ✅ Tested |
 | **System** | NOP | Implied | ✅ Tested |
 | | BRK, RTI | Implied | ✅ Tested |
-| **Not Implemented** | JMP | ABS, IND | ❌ Not Implemented |
-| | JSR, RTS | — | ❌ Not Implemented |
+| **Control Flow** | JMP | ABS, IND | ✅ Tested |
+| | JSR, RTS | ABS, Implied | ✅ Tested |
 
 **Legend**: IMM=Immediate, ZP=Zero Page, ABS=Absolute, IND=Indirect, A=Accumulator, Relative=Relative Addressing
