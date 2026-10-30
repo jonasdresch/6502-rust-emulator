@@ -96,6 +96,6 @@ fn branch_tests(#[case] mut op: Operation, #[case] flag_value: u8) {
     cpu.pc = op.addr;
     cpu.process(op.cycles);
     assert_eq!((op.addr as i32 + op.bytes) as u16, cpu.pc, "PC not expected");
-    assert_eq!(flag_value as u8, cpu.regs[Cpu::REG_STAT], "Stat reg expected");
+    assert_eq!(flag_value, cpu.regs[Cpu::REG_STAT], "Stat reg expected");
     assert_eq!(op.cycles, cpu.cycles_run, "Cycles run not expected");
 }
