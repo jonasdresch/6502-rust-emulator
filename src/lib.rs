@@ -12,18 +12,22 @@
 struct OpImm {
     reg_index: usize,
 }
+#[allow(dead_code)]
 struct OpRead {
     reg_index: usize,
 }
+#[allow(dead_code)]
 struct OpReadAnd {
     reg_index: usize,
 }
+#[allow(dead_code)]
 struct OpReadEor {
     reg_index: usize,
 }
 struct OpReadOra {
     reg_index: usize,
 }
+#[allow(dead_code)]
 struct OpWrite {
     reg_index: usize,
 }
@@ -82,15 +86,20 @@ impl Operation for OpInv {
 
 struct AddrModeImm;
 struct AddrModeZero;
+#[allow(dead_code)]
 struct AddrModeZeroX;
+#[allow(dead_code)]
 struct AddrModeAbs;
+#[allow(dead_code)]
 struct AddrModeAbsX {
     is_read_op: bool,
 }
+#[allow(dead_code)]
 struct AddrModeAbsY {
     is_read_op: bool,
 }
 struct AddrModeIndX;
+#[allow(dead_code)]
 struct AddrModeIndY {
     is_read_op: bool,
 }
@@ -426,15 +435,14 @@ impl<'a> Cpu<'a> {
     }
 
     fn read_from_stack(&mut self) -> u8 {
-        self.regs[Cpu::REG_SP] += 1;
+        self.regs[Cpu::REG_SP] = self.regs[Cpu::REG_SP].wrapping_add(1);
         self.read8(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR)
     }
 
     fn read_from_stack_16(&mut self) -> u16 {
-        self.regs[Cpu::REG_SP] += 1;
-        let val = self.read16(self.regs[Cpu::REG_SP] as u16 + STACK_START_ADDR);
-        self.regs[Cpu::REG_SP] += 1;
-        val
+        let low = self.read_from_stack() as u16;
+        let high = self.read_from_stack() as u16;
+        (high << 8) | low
     }
 
     fn read_pc(&mut self) -> u8 {
@@ -960,37 +968,37 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::ADC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::ADC_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
@@ -1007,37 +1015,37 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::SBC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
                 Cpu::SBC_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    let val = 255 - self.read8(addr as u16);
+                    let val = 255 - self.read8(addr);
                     self.regs[Cpu::REG_A] = self.adc(val);
                     self.set_zero_negative_flags(self.regs[Cpu::REG_A]);
                 }
@@ -1052,32 +1060,32 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::CMP_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_ABSOLUTE_Y => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_Y], true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_INDIRECT_X => {
                     let addr = self.fetch_indirect_x_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CMP_INDIRECT_Y => {
                     let addr = self.fetch_indirect_y_addr(true);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_A, val);
                 }
                 Cpu::CPX_IMMEDIATE => {
@@ -1091,7 +1099,7 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::CPX_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_X, val);
                 }
                 Cpu::CPY_IMMEDIATE => {
@@ -1105,7 +1113,7 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::CPY_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     self.set_compare_flags(Cpu::REG_Y, val);
                 }
                 Cpu::INC_ZERO => {
@@ -1117,23 +1125,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::INC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sum(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::INC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sum(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::INC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sum(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::INX_IMPLIED => {
@@ -1153,23 +1161,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::DEC_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sub(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::DEC_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sub(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::DEC_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let inc_val = self.sub(val, 1);
-                    self.write8(addr as u16, inc_val);
+                    self.write8(addr, inc_val);
                     self.set_zero_negative_flags(inc_val);
                 }
                 Cpu::DEX_IMPLIED => {
@@ -1193,23 +1201,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::ASL_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ASL_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ASL_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::LSR_IMPLIED => {
@@ -1225,23 +1233,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::LSR_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::LSR_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::LSR_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.shift_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROL_IMPLIED => {
@@ -1257,23 +1265,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::ROL_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROL_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROL_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_left(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROR_IMPLIED => {
@@ -1289,23 +1297,23 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::ROR_ZERO_X => {
                     let addr = self.fetch_zero_page_addr(self.regs[Cpu::REG_X]);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROR_ABSOLUTE => {
                     let addr = self.fetch_absolute_addr();
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::ROR_ABSOLUTE_X => {
                     let addr = self.fetch_absolute_indexed_addr(self.regs[Cpu::REG_X], false);
-                    let val = self.read8(addr as u16);
+                    let val = self.read8(addr);
                     let shift_val = self.rotate_right(val);
-                    self.write8(addr as u16, shift_val);
+                    self.write8(addr, shift_val);
                     self.set_zero_negative_flags(shift_val);
                 }
                 Cpu::BCC_RELATIVE => {
@@ -1379,6 +1387,27 @@ impl<'a> Cpu<'a> {
                 }
                 Cpu::NOP_IMPLIED => {
                     self.cycles_run += 1;
+                }
+                Cpu::JMP_ABSOLUTE => {
+                    self.pc = self.fetch_absolute_addr();
+                }
+                Cpu::JMP_INDIRECT => {
+                    let ptr = self.fetch_absolute_addr();
+                    let low = self.read8(ptr) as u16;
+                    let high_addr = (ptr & 0xFF00) | ((ptr + 1) & 0x00FF);
+                    let high = self.read8(high_addr) as u16;
+                    self.pc = (high << 8) | low;
+                }
+                Cpu::JSR_ABSOLUTE => {
+                    let target = self.fetch_absolute_addr();
+                    self.write_to_stack_16(self.pc - 1);
+                    self.pc = target;
+                    self.cycles_run += 1;
+                }
+                Cpu::RTS_IMPLIED => {
+                    let return_address = self.read_from_stack_16();
+                    self.pc = return_address.wrapping_add(1);
+                    self.cycles_run += 3;
                 }
                 // https://www.pagetable.com/?p=410
                 Cpu::BRK_IMPLIED => {

@@ -63,7 +63,7 @@ pub fn mem_abs(#[default(0)] instruction: u8, #[default(0)] addr: u16, #[default
     mem.reset();
     mem.load_programm(&[instruction, addr as u8, ((addr & 0xFF00) >> 8) as u8]);
     mem.write8(addr as usize, value);
-    Operation { cycles: 4, bytes: 3, mem, addr: addr as u16 }
+    Operation { cycles: 4, bytes: 3, mem, addr }
 }
 
 #[fixture]
@@ -84,7 +84,7 @@ pub fn mem_abs_index(#[default(0)] instruction: u8, #[default(0)] addr: u16, #[d
     if index as u16 + (addr as u8) as u16 > 255 {
         cycles = 5
     }
-    Operation { cycles, bytes: 3, mem, addr: real_addr as u16 }
+    Operation { cycles, bytes: 3, mem, addr: real_addr }
 }
 
 #[fixture]
@@ -110,7 +110,7 @@ pub fn mem_ind_x(#[default(0)] instruction: u8, #[default(0)] ind_addr: u8, #[de
     let real_addr = (ind_addr as u16 + index as u16) as u8;
     mem.write16(real_addr as usize, addr);
     mem.write8(addr as usize, value);
-    Operation { cycles: 6, bytes: 2, mem, addr: addr as u16 }
+    Operation { cycles: 6, bytes: 2, mem, addr }
 }
 
 #[fixture]
