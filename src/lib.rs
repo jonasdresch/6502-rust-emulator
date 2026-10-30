@@ -1,6 +1,4 @@
-// http://www.obelisk.me.uk/6502/architecture.html
 // http://www.emulator101.com/6502-addressing-modes.html
-// http://nesdev.com/6502_Cpu.txt
 // https://slark.me/c64-downloads/6502-addressing-modes.pdf
 // https://sites.google.com/site/6502asembly/6502-instruction-set/plp
 // https://www.masswerk.at/6502/6502_instruction_set.html
