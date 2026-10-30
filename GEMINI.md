@@ -12,12 +12,13 @@
 
 ## Testing
 
-- Run `cargo test` after any change to `src/` or `tests/`.
-- Skip running tests when only editing documentation files (`README.md`, comments, `GEMINI.md`, `.md` files in general).
-- Always run tests before creating a PR or declaring a task done.
+- Run `cargo test` after any change to `src/` or `tests/` that affects logic (i.e., non-comment lines).
+- Skip running tests when the only changes are comments or documentation files (`README.md`, `GEMINI.md`, `.md` files in general).
+- Always run tests before creating a PR or declaring a task done — unless all changes are comment-only or documentation-only.
 - If tests fail, fix the failures before proceeding — do not open a PR with broken tests.
 
 ## Code Quality
 
 - Run `cargo clippy` after changes to `src/` and resolve all warnings before committing.
 - Run `cargo fmt` to format code before committing.
+
